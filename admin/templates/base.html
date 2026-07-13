@@ -3,58 +3,134 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>THE MAIN — админка</title>
+  <title>THE MAIN — админ</title>
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="/fonts/fonts.css">
   <style>
-    :root { --bg:#0f1720; --card:#182430; --line:#26333f; --txt:#e7edf3; --muted:#93a4b3;
-            --blue:#3a8fd0; --green:#2ecc71; --red:#e5634d; }
-    * { box-sizing:border-box; }
-    body { margin:0; background:var(--bg); color:var(--txt);
-           font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; font-size:15px; }
-    header { background:var(--card); border-bottom:1px solid var(--line); padding:12px 20px;
-             display:flex; gap:18px; align-items:center; flex-wrap:wrap; position:sticky; top:0; }
-    header .brand { font-weight:700; color:var(--blue); }
-    header a { color:var(--txt); text-decoration:none; padding:6px 10px; border-radius:8px; }
-    header a:hover { background:var(--line); }
-    header .right { margin-left:auto; }
-    main { max-width:1100px; margin:0 auto; padding:24px 20px 60px; }
-    h1 { font-size:22px; margin:0 0 20px; }
-    h2 { font-size:17px; margin:28px 0 12px; }
-    .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
-    .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
-    .card .n { font-size:26px; font-weight:700; }
-    .card .l { color:var(--muted); font-size:13px; margin-top:4px; }
-    table { width:100%; border-collapse:collapse; background:var(--card);
-            border:1px solid var(--line); border-radius:12px; overflow:hidden; }
-    th,td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); font-size:14px; }
-    th { color:var(--muted); font-weight:600; }
-    tr:last-child td { border-bottom:none; }
-    input,textarea,select { background:#0f1a24; color:var(--txt); border:1px solid var(--line);
-            border-radius:8px; padding:8px 10px; font:inherit; width:100%; }
-    textarea { min-height:90px; resize:vertical; }
-    button { background:var(--blue); color:#fff; border:none; border-radius:8px; padding:8px 12px;
-             font:inherit; cursor:pointer; }
-    button.gray { background:var(--line); }
-    button.red { background:var(--red); }
-    button.small { padding:5px 9px; font-size:13px; }
-    form.inline { display:inline; }
-    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .muted { color:var(--muted); }
-    .help { color:var(--muted); font-size:12px; margin:2px 0 8px; }
-    .field { margin-bottom:16px; }
-    label.f { display:block; font-weight:600; margin-bottom:4px; }
-    .badge { padding:2px 8px; border-radius:20px; font-size:12px; }
-    .badge.on { background:rgba(46,204,113,.15); color:var(--green); }
-    .badge.off { background:rgba(229,99,77,.15); color:var(--red); }
+    :root{
+      --bg:#ececea; --surface:#ffffff; --surface-2:#f6f6f4;
+      --ink:#0b0b0c; --ink-2:#5f5f63; --ink-3:#8a8a8e;
+      --line:#e4e4e0; --line-2:#d7d7d2;
+      --primary:#0b0b0c; --on-primary:#ffffff;
+      --danger:#b23b30; --danger-bg:#f8ebe9;
+      --ok:#1f6b46; --ok-bg:#e8f1ec;
+      --r:14px; --r-sm:10px; --r-xs:8px;
+      --shadow:0 1px 2px rgba(11,11,12,.04), 0 6px 22px rgba(11,11,12,.05);
+      --ring:0 0 0 3px rgba(11,11,12,.14);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);
+      font-family:'Manrope',-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:inherit}
+    ::selection{background:var(--ink);color:#fff}
+
+    /* ---------- top bar ---------- */
+    header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.82);
+      backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line);
+      display:flex;align-items:center;gap:22px;padding:0 26px;height:62px}
+    .brand{display:flex;align-items:baseline;gap:9px;margin-right:6px;text-decoration:none}
+    .brand .wm{font-family:'Anton',Impact,sans-serif;text-transform:uppercase;
+      font-size:22px;letter-spacing:.02em;line-height:1;color:var(--ink)}
+    .brand .tag{font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
+    nav{display:flex;gap:4px;flex-wrap:wrap}
+    nav a{position:relative;text-decoration:none;color:var(--ink-2);font-weight:600;font-size:14px;
+      padding:8px 12px;border-radius:var(--r-xs);transition:color .18s,background .18s}
+    nav a:hover{color:var(--ink);background:var(--surface-2)}
+    nav a.active{color:var(--ink)}
+    nav a.active::after{content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:2px;background:var(--ink);border-radius:2px}
+    header .spacer{margin-left:auto}
+
+    /* ---------- layout ---------- */
+    main{max-width:1120px;margin:0 auto;padding:38px 26px 80px;
+      animation:fade .4s cubic-bezier(.2,.7,.2,1) both}
+    @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+    .page-title{font-size:27px;font-weight:800;letter-spacing:-.02em;margin:0 0 6px}
+    .page-sub{color:var(--ink-2);margin:0 0 26px;max-width:70ch}
+    h2{font-size:16px;font-weight:700;letter-spacing:-.01em;margin:34px 0 14px}
+    .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+      box-shadow:var(--shadow);padding:24px}
+    .panel + .panel{margin-top:18px}
+
+    /* ---------- buttons ---------- */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+      font:inherit;font-weight:600;font-size:14px;line-height:1;cursor:pointer;
+      padding:10px 15px;border-radius:var(--r-xs);border:1px solid transparent;
+      background:var(--primary);color:var(--on-primary);transition:transform .06s,filter .18s,background .18s,border-color .18s}
+    .btn:hover{filter:brightness(1.12)}
+    .btn:active{transform:translateY(1px)}
+    .btn:focus-visible{outline:none;box-shadow:var(--ring)}
+    .btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--line-2)}
+    .btn.ghost:hover{background:var(--surface-2);filter:none}
+    .btn.danger{background:var(--surface);color:var(--danger);border-color:#e6c9c5}
+    .btn.danger:hover{background:var(--danger-bg);filter:none}
+    .btn.sm{padding:7px 11px;font-size:13px}
+    .btn.icon{padding:8px;width:34px;height:34px}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
+
+    /* ---------- inputs ---------- */
+    label.f{display:block;font-weight:600;font-size:13.5px;margin-bottom:6px}
+    input,textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--surface);
+      border:1px solid var(--line-2);border-radius:var(--r-xs);padding:10px 12px;
+      transition:border-color .18s,box-shadow .18s}
+    input:hover,textarea:hover,select:hover{border-color:#c3c3bd}
+    input:focus,textarea:focus,select:focus{outline:none;border-color:var(--ink);box-shadow:var(--ring)}
+    input[readonly]{background:var(--surface-2);color:var(--ink-2)}
+    input[type=checkbox]{width:18px;height:18px;accent-color:var(--ink);vertical-align:middle}
+    textarea{min-height:96px;resize:vertical;line-height:1.55}
+    .field{margin-bottom:18px}
+    .help{color:var(--ink-3);font-size:12.5px;margin:2px 0 8px;line-height:1.45}
+
+    /* ---------- table ---------- */
+    .table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+      box-shadow:var(--shadow);overflow:hidden}
+    table{width:100%;border-collapse:collapse}
+    thead th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+      color:var(--ink-3);font-weight:700;padding:13px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+    tbody td{padding:13px 16px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle}
+    tbody tr:last-child td{border-bottom:none}
+    tbody tr{transition:background .14s}
+    tbody tr:hover{background:var(--surface-2)}
+    .num{font-variant-numeric:tabular-nums}
+
+    /* ---------- badges ---------- */
+    .badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;
+      padding:3px 9px;border-radius:999px;line-height:1.4;white-space:nowrap}
+    .badge.ok{background:var(--ok-bg);color:var(--ok)}
+    .badge.danger{background:var(--danger-bg);color:var(--danger)}
+    .badge.muted{background:var(--surface-2);color:var(--ink-3)}
+    .badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+    /* ---------- helpers ---------- */
+    .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+    .muted{color:var(--ink-3)}
+    form.inline{display:inline}
+    .save-flash{animation:pop .3s ease}
+    @keyframes pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+    @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+    @media (max-width:640px){
+      header{padding:0 16px;gap:12px}main{padding:26px 16px 70px}
+      nav a{padding:7px 9px;font-size:13px}
+    }
   </style>
 </head>
 <body>
+  {% set path = request.url.path %}
   <header>
-    <span class="brand">🐘 THE MAIN</span>
-    <a href="{{ base }}/settings">Тексты</a>
-    <a href="{{ base }}/tariffs">Тарифы и цены</a>
-    <a href="{{ base }}/users">Пользователи</a>
-    <form method="post" action="{{ base }}/logout" class="right" style="margin:0;">
-      <button type="submit" class="gray small">Выйти</button>
+    <a class="brand" href="{{ base }}/settings">
+      <span class="wm">The&nbsp;Main</span><span class="tag">Admin</span>
+    </a>
+    <nav>
+      <a href="{{ base }}/settings" class="{{ 'active' if '/settings' in path else '' }}">Тексты</a>
+      <a href="{{ base }}/tariffs" class="{{ 'active' if '/tariffs' in path else '' }}">Тарифы и цены</a>
+      <a href="{{ base }}/users" class="{{ 'active' if '/users' in path else '' }}">Пользователи</a>
+    </nav>
+    <span class="spacer"></span>
+    <form method="post" action="{{ base }}/logout" style="margin:0">
+      <button type="submit" class="btn ghost sm" aria-label="Выйти из админки">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Выйти
+      </button>
     </form>
   </header>
   <main>{% block content %}{% endblock %}</main>

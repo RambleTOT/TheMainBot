@@ -1,22 +1,37 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Тексты и настройки</h1>
-{% if saved %}<p class="badge on" style="display:inline-block;margin-bottom:12px;">Сохранено ✓</p>{% endif %}
-<p class="help">Все тексты бота. Поддерживается HTML: &lt;b&gt;жирный&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;,
-&lt;a href="ссылка"&gt;текст&lt;/a&gt;. Плейсхолдеры в фигурных скобках (например {date}) не удаляйте.</p>
+<h1 class="page-title">Тексты бота</h1>
+<p class="page-sub">Все сообщения, которые видит пользователь. Поддерживается HTML:
+<code>&lt;b&gt;жирный&lt;/b&gt;</code>, <code>&lt;i&gt;курсив&lt;/i&gt;</code>,
+<code>&lt;a href="ссылка"&gt;текст&lt;/a&gt;</code>. Плейсхолдеры в фигурных скобках
+(например <code>{date}</code>) не удаляйте — бот подставит в них значения.</p>
+
+{% if saved %}
+<div class="badge ok save-flash" style="margin-bottom:18px"><span class="dot"></span>Изменения сохранены</div>
+{% endif %}
 
 <form method="post" action="{{ base }}/settings/save">
-  {% for key, label, multiline, hint in meta %}
-  <div class="field">
-    <label class="f" for="{{ key }}">{{ label }}</label>
-    {% if hint %}<div class="help">{{ hint }}</div>{% endif %}
-    {% if multiline %}
-      <textarea id="{{ key }}" name="{{ key }}">{{ values[key] }}</textarea>
-    {% else %}
-      <input id="{{ key }}" name="{{ key }}" value="{{ values[key] }}">
-    {% endif %}
+  <div class="panel">
+    {% for key, label, multiline, hint in meta %}
+    <div class="field">
+      <label class="f" for="{{ key }}">{{ label }}</label>
+      {% if hint %}<div class="help">{{ hint }}</div>{% endif %}
+      {% if multiline %}
+        <textarea id="{{ key }}" name="{{ key }}">{{ values[key] }}</textarea>
+      {% else %}
+        <input id="{{ key }}" name="{{ key }}" value="{{ values[key] }}">
+      {% endif %}
+    </div>
+    {% endfor %}
   </div>
-  {% endfor %}
-  <button type="submit">Сохранить всё</button>
+  <div class="row" style="margin-top:20px;position:sticky;bottom:16px">
+    <button type="submit" class="btn">Сохранить всё</button>
+    <span class="muted" style="font-size:13px">Применяется в боте сразу</span>
+  </div>
 </form>
+
+<style>
+  code{background:var(--surface);border:1px solid var(--line);border-radius:5px;
+    padding:1px 5px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+</style>
 {% endblock %}

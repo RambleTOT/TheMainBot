@@ -37,3 +37,7 @@ package-lock.json
 # ===== Документация и инструкции — репозиторий только с кодом =====
 *.md
 *.docx
+
+# Загруженные медиа (кроме .gitkeep)
+web/media/*
+!web/media/.gitkeep

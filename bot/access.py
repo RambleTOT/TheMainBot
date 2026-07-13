@@ -20,7 +20,13 @@ async def grant_access(bot: Bot, user_id: int) -> dict[str, str]:
     (creates_join_request=True). Заявку одобряет бот и только для оплативших
     (см. on_join_request в handlers.py) — поэтому пересланная ссылка бесполезна.
     Иначе берёт публичную ссылку из настроек. Возвращает {ключ_ресурса: ссылка}.
+
+    Заблокированным пользователям ссылки не выдаём (централизованная защита от
+    обхода бана через подарок/активацию, в т.ч. для публичных ссылок без gate).
     """
+    from .services import is_blocked
+    if await is_blocked(user_id):
+        return {}
     cfg = get_config()
     links: dict[str, str] = {}
     for r in cfg.resources:

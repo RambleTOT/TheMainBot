@@ -139,12 +139,13 @@ DEFAULT_SETTINGS: dict[str, str] = {
 
     "fallback": "Выбери действие в меню ниже 👇",
     "resource_soon": "Ссылка появится после настройки ресурсов.",
+    "access_blocked": "Доступ к ресурсам ограничен. Если это ошибка — напишите в поддержку.",
 }
 
 # Метаданные для админки: подпись, многострочный ли, подсказка о плейсхолдерах.
 SETTINGS_META: list[tuple[str, str, bool, str]] = [
     ("welcome_text", "Приветствие /start", True, "HTML. Ссылку оформляйте как <a href=\"URL\">текст</a>."),
-    ("welcome_image", "Картинка приветствия (file_id или путь)", False, "Необязательно."),
+    ("welcome_image", "Картинка приветствия (file_id)", False, "Лучше указывать file_id (загрузите фото боту). Локальный путь допускается только внутри web/media."),
     ("tariffs_intro", "Заголовок экрана «Тарифы»", False, ""),
     ("tariffs_disclaimer", "Дисклеймер на экране тарифов", True, ""),
     ("offer_url", "Ссылка на оферту", False, ""),
@@ -168,6 +169,7 @@ SETTINGS_META: list[tuple[str, str, bool, str]] = [
     ("gift_invalid", "Подарок: недействительная ссылка", True, ""),
     ("fallback", "Ответ на непонятную команду", False, ""),
     ("resource_soon", "Ресурс ещё не настроен", False, ""),
+    ("access_blocked", "Сообщение заблокированному пользователю", True, ""),
 ]
 
 DEFAULT_TARIFFS: list[tuple[str, str, str, int, int | None, int]] = [

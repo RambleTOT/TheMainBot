@@ -9,9 +9,11 @@
 Требуются переменные окружения (см. .env): BOT_TOKEN, ADMIN_PASSWORD, ADMIN_SECRET,
 DATABASE_URL (та же БД, что у бота). Необязательно: ADMIN_BASE_PATH (по умолчанию /admin).
 """
+import asyncio
 import hmac
 import logging
 import os
+import time
 from datetime import datetime
 
 from aiogram import Bot
@@ -32,6 +34,8 @@ cfg = get_config()
 # Fail-closed: без пароля и стойкого секрета админку не поднимаем.
 if not cfg.admin_password:
     raise RuntimeError("ADMIN_PASSWORD не задан — задайте его в .env перед запуском админки.")
+if len(cfg.admin_password) < 8:
+    raise RuntimeError("ADMIN_PASSWORD слишком короткий (нужно ≥8 символов, лучше длиннее и случайный).")
 if not cfg.admin_secret or len(cfg.admin_secret) < 16:
     raise RuntimeError("ADMIN_SECRET не задан или слишком короткий (нужно ≥16 случайных символов).")
 
@@ -40,7 +44,8 @@ BASE = "/" + os.getenv("ADMIN_BASE_PATH", "admin").strip("/")
 if BASE == "/":
     BASE = ""
 
-app = FastAPI(title="THE MAIN — админка")
+# /docs, /redoc, /openapi.json отключены — не раскрываем API-поверхность.
+app = FastAPI(title="THE MAIN — админка", docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(
     SessionMiddleware,
     secret_key=cfg.admin_secret,
@@ -94,18 +99,47 @@ async def _revoke(tg_id: int) -> None:
 
 
 # ------------------------- аутентификация -------------------------
+# Защита от подбора пароля: пер-IP счётчик неудач + блокировка + задержка.
+_LOGIN_WINDOW = 600      # окно учёта неудач, сек
+_LOGIN_MAX = 8           # неудач до блокировки
+_LOGIN_LOCK = 900        # длительность блокировки, сек
+_login_fails: dict[str, list[float]] = {}
+_login_locked: dict[str, float] = {}
+
+
+def _client_ip(request: Request) -> str:
+    ip = request.headers.get("x-real-ip") or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    return ip or (request.client.host if request.client else "?")
+
 
 @router.get("/login", response_class=HTMLResponse)
-async def login_form(request: Request, e: int = 0):
-    return _page(request, "login.html", {"error": bool(e), "no_password": not cfg.admin_password})
+async def login_form(request: Request, e: int = 0, locked: int = 0):
+    return _page(request, "login.html",
+                 {"error": bool(e), "locked": bool(locked), "no_password": not cfg.admin_password})
 
 
 @router.post("/login")
 async def login(request: Request, password: str = Form("")):
+    ip = _client_ip(request)
+    now = time.monotonic()
+    if _login_locked.get(ip, 0) > now:
+        return _rr("/login?locked=1")
     if cfg.admin_password and hmac.compare_digest(password, cfg.admin_password):
+        _login_fails.pop(ip, None)
+        _login_locked.pop(ip, None)
         request.session["auth"] = True
         return _rr("/settings")
-    log.warning("admin: неверный пароль при входе")
+    # неудача: задержка + учёт
+    await asyncio.sleep(0.4)
+    fails = [t for t in _login_fails.get(ip, []) if now - t < _LOGIN_WINDOW]
+    fails.append(now)
+    _login_fails[ip] = fails
+    if len(fails) >= _LOGIN_MAX:
+        _login_locked[ip] = now + _LOGIN_LOCK
+        _login_fails.pop(ip, None)
+        log.warning("admin: IP %s заблокирован на %d сек после %d неудачных входов", ip, _LOGIN_LOCK, _LOGIN_MAX)
+        return _rr("/login?locked=1")
+    log.warning("admin: неверный пароль при входе (ip=%s)", ip)
     return _rr("/login?e=1")
 
 

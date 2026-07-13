@@ -1,45 +1,84 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Тарифы</h1>
-<p class="help">Цена — в рублях. Срок (мес.) — пусто = «Навсегда». Порядок — сортировка в списке.
-Изменения применяются в боте сразу.</p>
+<h1 class="page-title">Тарифы и цены</h1>
+<p class="page-sub">Цена — в рублях. Срок (мес.) пустой = «Навсегда». Порядок задаёт сортировку в боте.
+Изменения применяются сразу.</p>
 
-<table>
-  <tr><th>Код</th><th>Название</th><th>Эмодзи</th><th>Цена ₽</th><th>Мес.</th><th>Порядок</th><th>Активен</th><th></th></tr>
+<div class="tariffs">
   {% for t in tariffs %}
-  <tr>
-    <form class="inline" method="post" action="{{ base }}/tariffs/save">
-      <td><input name="code" value="{{ t.code }}" readonly style="width:80px;"></td>
-      <td><input name="title" value="{{ t.title }}"></td>
-      <td><input name="emoji" value="{{ t.emoji }}" style="width:60px;"></td>
-      <td><input name="price_rub" type="number" value="{{ t.price_rub }}" style="width:90px;"></td>
-      <td><input name="months" value="{{ t.months if t.months is not none else '' }}" style="width:60px;"></td>
-      <td><input name="sort_order" type="number" value="{{ t.sort_order }}" style="width:70px;"></td>
-      <td><input name="is_active" type="checkbox" {% if t.is_active %}checked{% endif %} style="width:auto;"></td>
-      <td><button class="small" type="submit">Сохранить</button></td>
+  <div class="panel trow">
+    <form method="post" action="{{ base }}/tariffs/save" class="grid">
+      <div class="cell code">
+        <label class="f">Код</label>
+        <input name="code" value="{{ t.code }}" readonly>
+      </div>
+      <div class="cell emoji">
+        <label class="f">Эмодзи</label>
+        <input name="emoji" value="{{ t.emoji }}">
+      </div>
+      <div class="cell title">
+        <label class="f">Название</label>
+        <input name="title" value="{{ t.title }}">
+      </div>
+      <div class="cell">
+        <label class="f">Цена ₽</label>
+        <input class="num" name="price_rub" type="number" min="0" value="{{ t.price_rub }}">
+      </div>
+      <div class="cell">
+        <label class="f">Мес.</label>
+        <input class="num" name="months" value="{{ t.months if t.months is not none else '' }}" placeholder="∞">
+      </div>
+      <div class="cell">
+        <label class="f">Порядок</label>
+        <input class="num" name="sort_order" type="number" value="{{ t.sort_order }}">
+      </div>
+      <div class="cell toggle">
+        <label class="f">Активен</label>
+        <label class="switch"><input type="checkbox" name="is_active" {% if t.is_active %}checked{% endif %}></label>
+      </div>
+      <div class="cell actions">
+        <button type="submit" class="btn sm">Сохранить</button>
+      </div>
     </form>
-    <td>
-      <form class="inline" method="post" action="{{ base }}/tariffs/delete"
-            onsubmit="return confirm('Удалить тариф {{ t.code }}?')">
-        <input type="hidden" name="code" value="{{ t.code }}">
-        <button class="small red" type="submit">✕</button>
-      </form>
-    </td>
-  </tr>
+    <form method="post" action="{{ base }}/tariffs/delete" class="del"
+          onsubmit="return confirm('Удалить тариф «{{ t.title }}»?')">
+      <input type="hidden" name="code" value="{{ t.code }}">
+      <button type="submit" class="btn danger icon" aria-label="Удалить тариф">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      </button>
+    </form>
+  </div>
   {% endfor %}
-</table>
+</div>
 
 <h2>Добавить тариф</h2>
-<form method="post" action="{{ base }}/tariffs/save">
-  <div class="row">
-    <input name="code" placeholder="код (напр. 1m)" style="width:120px;" required>
-    <input name="title" placeholder="Название" style="width:160px;" required>
-    <input name="emoji" placeholder="эмодзи" style="width:80px;">
-    <input name="price_rub" type="number" placeholder="цена ₽" style="width:110px;" required>
-    <input name="months" placeholder="мес. (пусто=навсегда)" style="width:170px;">
-    <input name="sort_order" type="number" value="60" style="width:90px;">
-    <label class="row" style="width:auto;"><input type="checkbox" name="is_active" checked style="width:auto;"> активен</label>
-    <button type="submit">Добавить</button>
-  </div>
-</form>
+<div class="panel">
+  <form method="post" action="{{ base }}/tariffs/save" class="grid add">
+    <div class="cell code"><label class="f">Код</label><input name="code" placeholder="1m" required></div>
+    <div class="cell emoji"><label class="f">Эмодзи</label><input name="emoji" placeholder="🫖"></div>
+    <div class="cell title"><label class="f">Название</label><input name="title" placeholder="1 месяц" required></div>
+    <div class="cell"><label class="f">Цена ₽</label><input class="num" name="price_rub" type="number" min="0" placeholder="1190" required></div>
+    <div class="cell"><label class="f">Мес.</label><input class="num" name="months" placeholder="1"></div>
+    <div class="cell"><label class="f">Порядок</label><input class="num" name="sort_order" type="number" value="60"></div>
+    <div class="cell toggle"><label class="f">Активен</label><label class="switch"><input type="checkbox" name="is_active" checked></label></div>
+    <div class="cell actions"><button type="submit" class="btn">Добавить</button></div>
+  </form>
+</div>
+
+<style>
+  .tariffs{display:flex;flex-direction:column;gap:12px}
+  .trow{display:flex;align-items:flex-end;gap:12px;padding:16px 18px}
+  .trow .grid,.add{flex:1;display:grid;gap:12px;
+    grid-template-columns:78px 74px minmax(150px,1.4fr) 96px 66px 78px 74px auto;align-items:end}
+  .cell .f{margin-bottom:5px;font-size:12px;color:var(--ink-2)}
+  .switch{display:inline-flex;align-items:center;height:40px}
+  .actions{display:flex;align-items:end}
+  .del{padding-bottom:1px}
+  @media (max-width:860px){
+    .trow{flex-direction:column;align-items:stretch}
+    .trow .grid,.add{grid-template-columns:repeat(2,1fr)}
+    .cell.title{grid-column:span 2}.cell.actions{grid-column:span 2}
+    .del{align-self:flex-end}
+  }
+</style>
 {% endblock %}

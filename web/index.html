@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>THE MAIN</title>
+  <meta name="robots" content="noindex">
+  <link rel="preload" href="/fonts/Anton-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts/fonts.css">
+  <style>
+    :root{
+      --bg:#e9e9e6; --bg-2:#dedddA; --ink:#0a0a0b; --muted:#7c7c78; --line:#cfcfc9;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      background:
+        radial-gradient(120% 90% at 50% -10%, #f2f2ef 0%, var(--bg) 55%, var(--bg-2) 100%);
+      color:var(--ink);
+      font-family:'Manrope',-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      -webkit-font-smoothing:antialiased;
+      display:flex;flex-direction:column;min-height:100dvh;overflow:hidden;
+    }
+    /* subtle film-grain texture */
+    body::after{
+      content:"";position:fixed;inset:0;pointer-events:none;opacity:.05;mix-blend-mode:multiply;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .top{display:flex;justify-content:space-between;align-items:center;padding:26px 32px;
+         font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted)}
+    .top b{color:var(--ink);font-weight:700}
+    main{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;
+         text-align:center;padding:0 24px}
+    .the{font-size:clamp(20px,4vw,34px);letter-spacing:.5em;font-weight:700;text-transform:uppercase;
+         margin-left:.5em;color:var(--ink);opacity:0;animation:rise .9s .1s cubic-bezier(.2,.7,.2,1) forwards}
+    .main{font-family:'Anton',Impact,sans-serif;text-transform:uppercase;line-height:.82;
+          font-size:clamp(96px,26vw,360px);letter-spacing:-.01em;color:var(--ink);
+          opacity:0;animation:rise 1s .22s cubic-bezier(.2,.7,.2,1) forwards}
+    .rule{width:0;height:2px;background:var(--ink);margin:34px auto 22px;
+          animation:grow 1s .6s cubic-bezier(.2,.7,.2,1) forwards}
+    .tag{font-size:clamp(11px,1.4vw,14px);letter-spacing:.34em;text-transform:uppercase;color:var(--muted);
+         opacity:0;animation:rise .9s .7s cubic-bezier(.2,.7,.2,1) forwards}
+    .bottom{display:flex;justify-content:center;gap:26px;padding:26px 32px;
+            font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
+    .bottom a{color:var(--muted);text-decoration:none;transition:color .2s}
+    .bottom a:hover{color:var(--ink)}
+    @keyframes rise{to{opacity:1;transform:none}from{opacity:0;transform:translateY(14px)}}
+    @keyframes grow{to{width:min(120px,40vw)}}
+    @media (prefers-reduced-motion:reduce){
+      .the,.main,.tag{animation:none;opacity:1}.rule{animation:none;width:min(120px,40vw)}
+    }
+  </style>
+</head>
+<body>
+  <div class="top"><span><b>EST.</b> MMXXVI</span><span>Private Club</span></div>
+  <main>
+    <div class="the">The</div>
+    <div class="main">Main</div>
+    <div class="rule"></div>
+    <div class="tag">Братство&nbsp;мужчин&nbsp;&middot;&nbsp;School</div>
+  </main>
+  <div class="bottom">
+    <a href="https://t.me/" rel="noopener">Telegram</a>
+    <span>&copy; THE MAIN</span>
+  </div>
+</body>
+</html>

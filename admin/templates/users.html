@@ -1,55 +1,77 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Пользователи</h1>
+<h1 class="page-title">Пользователи</h1>
+<p class="page-sub">Поиск, ручная выдача подписки, остановка автоплатежа, отмена и блокировка.</p>
 
-<form method="get" action="{{ base }}/users" class="row" style="margin-bottom:16px;">
-  <input name="q" value="{{ q }}" placeholder="Поиск по ID или @username" style="max-width:320px;">
-  <button type="submit">Найти</button>
-  {% if q %}<a href="{{ base }}/users"><button type="button" class="gray">Сброс</button></a>{% endif %}
+<form method="get" action="{{ base }}/users" class="searchbar" role="search">
+  <span class="sicon" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  </span>
+  <input name="q" value="{{ q }}" placeholder="Поиск по Telegram ID или @username">
+  <button type="submit" class="btn sm">Найти</button>
+  {% if q %}<a class="btn ghost sm" href="{{ base }}/users">Сброс</a>{% endif %}
 </form>
 
-<table>
-  <tr>
-    <th>ID</th><th>Username</th><th>Имя</th><th>Подписка</th><th>Тариф</th>
-    <th>Автоплатёж</th><th>Выдать</th><th>Действия</th>
-  </tr>
-  {% for u in rows %}
-  <tr>
-    <td>{{ u.tg_id }}{% if u.blocked %} <span class="badge off">бан</span>{% endif %}</td>
-    <td>{% if u.username %}@{{ u.username }}{% else %}—{% endif %}</td>
-    <td>{{ u.full_name }}</td>
-    <td>{% if u.has_sub %}<span class="badge on">{{ u.status }}</span>{% else %}<span class="muted">нет</span>{% endif %}</td>
-    <td>{{ u.tariff }}</td>
-    <td>{{ u.autopay }}</td>
-    <td>
-      <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/grant">
-        <div class="row">
-          <select name="code" style="width:auto;">
-            {% for t in tariffs %}<option value="{{ t.code }}">{{ t.emoji }} {{ t.title }}</option>{% endfor %}
-          </select>
-          <button class="small" type="submit">Выдать</button>
-        </div>
-      </form>
-    </td>
-    <td>
-      <div class="row">
-        {% if u.has_sub %}
-        <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/stop_autopay">
-          <button class="small gray" type="submit">Стоп автоплатёж</button></form>
-        <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/cancel">
-          <button class="small red" type="submit">Отменить</button></form>
-        {% endif %}
-        {% if u.blocked %}
-        <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/unblock">
-          <button class="small gray" type="submit">Разбан</button></form>
-        {% else %}
-        <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/block">
-          <button class="small red" type="submit">Бан</button></form>
-        {% endif %}
-      </div>
-    </td>
-  </tr>
-  {% endfor %}
-</table>
-{% if not rows %}<p class="muted" style="margin-top:16px;">Ничего не найдено.</p>{% endif %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Пользователь</th><th>Подписка</th><th>Тариф</th><th>Автоплатёж</th>
+        <th>Выдать</th><th style="text-align:right">Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for u in rows %}
+      <tr>
+        <td>
+          <div class="u-id num">{{ u.tg_id }}{% if u.blocked %} <span class="badge danger"><span class="dot"></span>бан</span>{% endif %}</div>
+          <div class="u-meta">{% if u.username %}@{{ u.username }}{% else %}—{% endif %}{% if u.full_name %} · {{ u.full_name }}{% endif %}</div>
+        </td>
+        <td>{% if u.has_sub %}<span class="badge ok"><span class="dot"></span>{{ u.status }}</span>{% else %}<span class="badge muted">нет</span>{% endif %}</td>
+        <td>{{ u.tariff }}</td>
+        <td class="muted">{{ u.autopay }}</td>
+        <td>
+          <form class="inline row" method="post" action="{{ base }}/users/{{ u.tg_id }}/grant" style="gap:6px">
+            <select name="code" style="width:auto;min-width:120px">
+              {% for t in tariffs %}<option value="{{ t.code }}">{{ t.emoji }} {{ t.title }}</option>{% endfor %}
+            </select>
+            <button class="btn ghost sm" type="submit">Выдать</button>
+          </form>
+        </td>
+        <td>
+          <div class="row" style="justify-content:flex-end;gap:6px">
+            {% if u.has_sub %}
+            <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/stop_autopay">
+              <button class="btn ghost sm" type="submit">Стоп автоплатёж</button></form>
+            <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/cancel"
+                  onsubmit="return confirm('Отменить подписку пользователя {{ u.tg_id }}?')">
+              <button class="btn danger sm" type="submit">Отменить</button></form>
+            {% endif %}
+            {% if u.blocked %}
+            <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/unblock">
+              <button class="btn ghost sm" type="submit">Разбан</button></form>
+            {% else %}
+            <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/block"
+                  onsubmit="return confirm('Заблокировать пользователя {{ u.tg_id }}?')">
+              <button class="btn danger sm" type="submit">Бан</button></form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if not rows %}<div style="padding:40px;text-align:center" class="muted">Ничего не найдено.</div>{% endif %}
+</div>
+
+<style>
+  .searchbar{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r);box-shadow:var(--shadow);padding:9px 12px;margin-bottom:18px}
+  .searchbar .sicon{color:var(--ink-3);display:flex}
+  .searchbar input{border:none;box-shadow:none;padding:6px 2px;flex:1}
+  .searchbar input:focus{box-shadow:none}
+  .u-id{font-weight:600}
+  .u-meta{color:var(--ink-3);font-size:12.5px;margin-top:2px}
+  a.btn{text-decoration:none}
+</style>
 {% endblock %}

@@ -4,28 +4,46 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Вход — THE MAIN</title>
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="/fonts/fonts.css">
   <style>
-    body { margin:0; height:100vh; display:flex; align-items:center; justify-content:center;
-           background:#0f1720; color:#e7edf3; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; }
-    .box { background:#182430; border:1px solid #26333f; border-radius:14px; padding:28px; width:320px; }
-    .box h1 { font-size:19px; margin:0 0 18px; }
-    input { width:100%; background:#0f1a24; color:#e7edf3; border:1px solid #26333f;
-            border-radius:8px; padding:10px; font:inherit; margin-bottom:12px; }
-    button { width:100%; background:#3a8fd0; color:#fff; border:none; border-radius:8px;
-             padding:10px; font:inherit; cursor:pointer; }
-    .err { color:#e5634d; font-size:13px; margin-bottom:12px; }
-    .muted { color:#93a4b3; font-size:13px; }
+    :root{--bg:#ececea;--surface:#fff;--ink:#0b0b0c;--ink-2:#5f5f63;--ink-3:#8a8a8e;
+      --line:#d7d7d2;--danger:#b23b30;--danger-bg:#f8ebe9;--ring:0 0 0 3px rgba(11,11,12,.14)}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;
+      background:radial-gradient(120% 90% at 50% -20%,#f4f4f2,var(--bg));
+      color:var(--ink);font-family:'Manrope',-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      -webkit-font-smoothing:antialiased}
+    .box{width:340px;max-width:100%;background:var(--surface);border:1px solid var(--line);
+      border-radius:16px;box-shadow:0 1px 2px rgba(11,11,12,.05),0 20px 50px rgba(11,11,12,.08);
+      padding:34px 30px;animation:rise .5s cubic-bezier(.2,.7,.2,1) both}
+    @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+    .wm{font-family:'Anton',Impact,sans-serif;text-transform:uppercase;font-size:34px;
+      letter-spacing:.01em;line-height:.9;text-align:center}
+    .sub{text-align:center;font-size:11px;letter-spacing:.28em;text-transform:uppercase;
+      color:var(--ink-3);font-weight:700;margin:8px 0 26px}
+    label{display:block;font-size:13px;font-weight:600;margin-bottom:7px}
+    input{width:100%;font:inherit;padding:11px 13px;border:1px solid var(--line);border-radius:10px;
+      background:var(--surface);color:var(--ink);transition:border-color .18s,box-shadow .18s}
+    input:focus{outline:none;border-color:var(--ink);box-shadow:var(--ring)}
+    button{width:100%;margin-top:16px;font:inherit;font-weight:600;padding:12px;border:none;
+      border-radius:10px;background:var(--ink);color:#fff;cursor:pointer;transition:filter .18s}
+    button:hover{filter:brightness(1.15)}
+    button:focus-visible{outline:none;box-shadow:var(--ring)}
+    .err{background:var(--danger-bg);color:var(--danger);font-size:13px;font-weight:500;
+      padding:10px 12px;border-radius:9px;margin-bottom:16px}
   </style>
 </head>
 <body>
   <div class="box">
-    <h1>🐘 THE MAIN — админка</h1>
-    {% if no_password %}
-      <p class="err">ADMIN_PASSWORD не задан в .env — вход невозможен.</p>
-    {% endif %}
-    {% if error %}<p class="err">Неверный пароль.</p>{% endif %}
+    <div class="wm">The&nbsp;Main</div>
+    <div class="sub">Admin&nbsp;Panel</div>
+    {% if no_password %}<div class="err">ADMIN_PASSWORD не задан в .env — вход невозможен.</div>{% endif %}
+    {% if locked %}<div class="err">Слишком много попыток. Подождите несколько минут и попробуйте снова.</div>
+    {% elif error %}<div class="err">Неверный пароль. Попробуйте ещё раз.</div>{% endif %}
     <form method="post" action="{{ base }}/login">
-      <input type="password" name="password" placeholder="Пароль" autofocus>
+      <label for="pw">Пароль</label>
+      <input id="pw" type="password" name="password" autocomplete="current-password" autofocus>
       <button type="submit">Войти</button>
     </form>
   </div>

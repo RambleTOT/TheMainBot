@@ -37,6 +37,28 @@ router = Router()
 
 NO_PREVIEW = LinkPreviewOptions(is_disabled=True)
 
+# Разрешённая папка для локальных картинок приветствия + допустимые расширения.
+IMG_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+MEDIA_DIR = os.path.realpath(os.getenv("WELCOME_MEDIA_DIR") or "web/media")
+
+
+def _welcome_photo(image: str):
+    """Безопасно интерпретирует welcome_image.
+
+    http(s)-URL или Telegram file_id — возвращаем как есть. Локальный путь читаем
+    ТОЛЬКО если он внутри MEDIA_DIR и это картинка — иначе None. Это закрывает чтение
+    произвольных файлов сервера (например .env) и рассылку их пользователям.
+    """
+    if image.startswith(("http://", "https://")):
+        return image
+    if image.startswith(("/", "./", "../")) or os.path.exists(image):
+        p = os.path.realpath(image)
+        if (p == MEDIA_DIR or p.startswith(MEDIA_DIR + os.sep)) \
+                and os.path.splitext(p)[1].lower() in IMG_EXT and os.path.isfile(p):
+            return FSInputFile(p)
+        return None
+    return image  # трактуем как file_id
+
 
 # ------------------------- вспомогательное -------------------------
 
@@ -59,8 +81,8 @@ async def _active_sub_text(sub: SubInfo) -> str:
 async def _send_welcome(message: Message) -> None:
     text = await content.get_text("welcome_text")
     image = await content.get_setting("welcome_image")
-    if image:
-        photo = FSInputFile(image) if os.path.exists(image) else image
+    photo = _welcome_photo(image) if image else None
+    if photo is not None:
         try:
             await message.answer_photo(photo, caption=text, reply_markup=kb.main_menu())
             return
@@ -83,6 +105,9 @@ async def cmd_start(message: Message, command: CommandObject, bot: Bot) -> None:
 
 
 async def _handle_gift_redeem(message: Message, bot: Bot, code: str) -> None:
+    if await is_blocked(message.from_user.id):
+        await message.answer(await content.get_text("access_blocked"))
+        return
     result = await redeem_gift(code, message.from_user.id)
     if result is None:
         await message.answer(await content.get_text("gift_invalid"))
@@ -180,6 +205,9 @@ async def paid_test(cq: CallbackQuery, bot: Bot) -> None:
     if tariff is None:
         await cq.answer("Тариф не найден", show_alert=True)
         return
+    if await is_blocked(cq.from_user.id):
+        await cq.answer("Доступ ограничен", show_alert=True)
+        return
     sub = await activate_subscription(cq.from_user.id, tariff, is_recurring=not tariff.is_forever)
     links = await grant_access(bot, cq.from_user.id)
     thanks = await content.get_text("thanks_text")
@@ -199,6 +227,9 @@ async def paid_gift_test(cq: CallbackQuery, bot: Bot) -> None:
     tariff = await content.get_tariff(code)
     if tariff is None:
         await cq.answer("Тариф не найден", show_alert=True)
+        return
+    if await is_blocked(cq.from_user.id):
+        await cq.answer("Доступ ограничен", show_alert=True)
         return
     gift_code = await create_gift_code(cq.from_user.id, tariff)
     me = await bot.me()
@@ -267,6 +298,12 @@ async def on_join_request(update: ChatJoinRequest) -> None:
     и только того, кто реально оплатил. Бот должен быть админом ресурса.
     """
     uid = update.from_user.id
+    # одобряем только в настроенных ресурсах (не в любом чате, где бот — админ)
+    allowed = {r.chat_id for r in get_config().resources if r.chat_id}
+    if update.chat.id not in allowed:
+        await update.decline()
+        log.info("Join declined (chat not in resources): user=%s chat=%s", uid, update.chat.id)
+        return
     sub = await get_active_subscription(uid)
     if sub is not None and not await is_blocked(uid):
         await update.approve()
