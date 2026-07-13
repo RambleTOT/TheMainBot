@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>THE MAIN — админка</title>
+  <style>
+    :root { --bg:#0f1720; --card:#182430; --line:#26333f; --txt:#e7edf3; --muted:#93a4b3;
+            --blue:#3a8fd0; --green:#2ecc71; --red:#e5634d; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--txt);
+           font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; font-size:15px; }
+    header { background:var(--card); border-bottom:1px solid var(--line); padding:12px 20px;
+             display:flex; gap:18px; align-items:center; flex-wrap:wrap; position:sticky; top:0; }
+    header .brand { font-weight:700; color:var(--blue); }
+    header a { color:var(--txt); text-decoration:none; padding:6px 10px; border-radius:8px; }
+    header a:hover { background:var(--line); }
+    header .right { margin-left:auto; }
+    main { max-width:1100px; margin:0 auto; padding:24px 20px 60px; }
+    h1 { font-size:22px; margin:0 0 20px; }
+    h2 { font-size:17px; margin:28px 0 12px; }
+    .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+    .card .n { font-size:26px; font-weight:700; }
+    .card .l { color:var(--muted); font-size:13px; margin-top:4px; }
+    table { width:100%; border-collapse:collapse; background:var(--card);
+            border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+    th,td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); font-size:14px; }
+    th { color:var(--muted); font-weight:600; }
+    tr:last-child td { border-bottom:none; }
+    input,textarea,select { background:#0f1a24; color:var(--txt); border:1px solid var(--line);
+            border-radius:8px; padding:8px 10px; font:inherit; width:100%; }
+    textarea { min-height:90px; resize:vertical; }
+    button { background:var(--blue); color:#fff; border:none; border-radius:8px; padding:8px 12px;
+             font:inherit; cursor:pointer; }
+    button.gray { background:var(--line); }
+    button.red { background:var(--red); }
+    button.small { padding:5px 9px; font-size:13px; }
+    form.inline { display:inline; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .muted { color:var(--muted); }
+    .help { color:var(--muted); font-size:12px; margin:2px 0 8px; }
+    .field { margin-bottom:16px; }
+    label.f { display:block; font-weight:600; margin-bottom:4px; }
+    .badge { padding:2px 8px; border-radius:20px; font-size:12px; }
+    .badge.on { background:rgba(46,204,113,.15); color:var(--green); }
+    .badge.off { background:rgba(229,99,77,.15); color:var(--red); }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="brand">🐘 THE MAIN</span>
+    <a href="{{ base }}/settings">Тексты</a>
+    <a href="{{ base }}/tariffs">Тарифы и цены</a>
+    <a href="{{ base }}/users">Пользователи</a>
+    <form method="post" action="{{ base }}/logout" class="right" style="margin:0;">
+      <button type="submit" class="gray small">Выйти</button>
+    </form>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+</body>
+</html>

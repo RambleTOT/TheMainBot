@@ -1,0 +1,21 @@
+[Unit]
+Description=THE MAIN admin panel (FastAPI)
+After=network-online.target postgresql.service
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=themain
+WorkingDirectory=/opt/themain
+EnvironmentFile=/opt/themain/.env
+# слушаем только localhost — наружу выходит только через nginx+HTTPS
+ExecStart=/opt/themain/.venv/bin/uvicorn admin.app:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,22 @@
+[Unit]
+Description=THE MAIN Telegram bot
+After=network-online.target postgresql.service
+Wants=network-online.target
+# не сдаваться после серии падений — перезапускать всегда
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=themain
+WorkingDirectory=/opt/themain
+EnvironmentFile=/opt/themain/.env
+ExecStart=/opt/themain/.venv/bin/python -m bot.main
+Restart=always
+RestartSec=5
+# базовое усиление
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

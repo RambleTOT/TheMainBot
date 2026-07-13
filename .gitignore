@@ -1,0 +1,35 @@
+# ===== Секреты (НИКОГДА не коммитить) =====
+.env
+.env.*
+# шаблоны без секретов — оставляем в репозитории
+!.env.example
+!deploy/.env.production.example
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+secrets/
+
+# ===== База данных и бэкапы =====
+*.db
+*.sqlite3
+backups/
+
+# ===== Python =====
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ===== Node (только для генерации .docx из tools/) =====
+node_modules/
+package.json
+package-lock.json
+
+# ===== Прочее / артефакты =====
+*.pdf
+*.log
+.DS_Store
+.idea/
+.vscode/
+.claude/

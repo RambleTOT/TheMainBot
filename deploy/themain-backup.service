@@ -1,0 +1,6 @@
+[Unit]
+Description=THE MAIN — ежедневный бэкап базы PostgreSQL
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/themain/deploy/backup.sh

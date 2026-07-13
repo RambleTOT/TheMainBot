@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Тарифы</h1>
+<p class="help">Цена — в рублях. Срок (мес.) — пусто = «Навсегда». Порядок — сортировка в списке.
+Изменения применяются в боте сразу.</p>
+
+<table>
+  <tr><th>Код</th><th>Название</th><th>Эмодзи</th><th>Цена ₽</th><th>Мес.</th><th>Порядок</th><th>Активен</th><th></th></tr>
+  {% for t in tariffs %}
+  <tr>
+    <form class="inline" method="post" action="{{ base }}/tariffs/save">
+      <td><input name="code" value="{{ t.code }}" readonly style="width:80px;"></td>
+      <td><input name="title" value="{{ t.title }}"></td>
+      <td><input name="emoji" value="{{ t.emoji }}" style="width:60px;"></td>
+      <td><input name="price_rub" type="number" value="{{ t.price_rub }}" style="width:90px;"></td>
+      <td><input name="months" value="{{ t.months if t.months is not none else '' }}" style="width:60px;"></td>
+      <td><input name="sort_order" type="number" value="{{ t.sort_order }}" style="width:70px;"></td>
+      <td><input name="is_active" type="checkbox" {% if t.is_active %}checked{% endif %} style="width:auto;"></td>
+      <td><button class="small" type="submit">Сохранить</button></td>
+    </form>
+    <td>
+      <form class="inline" method="post" action="{{ base }}/tariffs/delete"
+            onsubmit="return confirm('Удалить тариф {{ t.code }}?')">
+        <input type="hidden" name="code" value="{{ t.code }}">
+        <button class="small red" type="submit">✕</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h2>Добавить тариф</h2>
+<form method="post" action="{{ base }}/tariffs/save">
+  <div class="row">
+    <input name="code" placeholder="код (напр. 1m)" style="width:120px;" required>
+    <input name="title" placeholder="Название" style="width:160px;" required>
+    <input name="emoji" placeholder="эмодзи" style="width:80px;">
+    <input name="price_rub" type="number" placeholder="цена ₽" style="width:110px;" required>
+    <input name="months" placeholder="мес. (пусто=навсегда)" style="width:170px;">
+    <input name="sort_order" type="number" value="60" style="width:90px;">
+    <label class="row" style="width:auto;"><input type="checkbox" name="is_active" checked style="width:auto;"> активен</label>
+    <button type="submit">Добавить</button>
+  </div>
+</form>
+{% endblock %}

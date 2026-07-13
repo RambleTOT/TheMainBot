@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Тексты и настройки</h1>
+{% if saved %}<p class="badge on" style="display:inline-block;margin-bottom:12px;">Сохранено ✓</p>{% endif %}
+<p class="help">Все тексты бота. Поддерживается HTML: &lt;b&gt;жирный&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;,
+&lt;a href="ссылка"&gt;текст&lt;/a&gt;. Плейсхолдеры в фигурных скобках (например {date}) не удаляйте.</p>
+
+<form method="post" action="{{ base }}/settings/save">
+  {% for key, label, multiline, hint in meta %}
+  <div class="field">
+    <label class="f" for="{{ key }}">{{ label }}</label>
+    {% if hint %}<div class="help">{{ hint }}</div>{% endif %}
+    {% if multiline %}
+      <textarea id="{{ key }}" name="{{ key }}">{{ values[key] }}</textarea>
+    {% else %}
+      <input id="{{ key }}" name="{{ key }}" value="{{ values[key] }}">
+    {% endif %}
+  </div>
+  {% endfor %}
+  <button type="submit">Сохранить всё</button>
+</form>
+{% endblock %}

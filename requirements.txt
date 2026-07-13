@@ -1,0 +1,21 @@
+# --- Telegram-бот подписок «THE MAIN» ---
+aiogram>=3.7,<4
+SQLAlchemy[asyncio]>=2.0,<3
+aiosqlite>=0.19
+python-dotenv>=1.0
+APScheduler>=3.10,<4
+python-dateutil>=2.9
+tzdata>=2024.1
+
+# --- Веб-админка (тексты, цены, пользователи) ---
+fastapi>=0.110
+uvicorn[standard]>=0.29
+jinja2>=3.1
+python-multipart>=0.0.9
+itsdangerous>=2.1
+
+# Для production на PostgreSQL дополнительно установите:
+# asyncpg>=0.29
+#
+# Для реального приёма платежей (ЮKassa) — после согласования провайдера:
+# yookassa>=3.0

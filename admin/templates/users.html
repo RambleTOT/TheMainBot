@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Пользователи</h1>
+
+<form method="get" action="{{ base }}/users" class="row" style="margin-bottom:16px;">
+  <input name="q" value="{{ q }}" placeholder="Поиск по ID или @username" style="max-width:320px;">
+  <button type="submit">Найти</button>
+  {% if q %}<a href="{{ base }}/users"><button type="button" class="gray">Сброс</button></a>{% endif %}
+</form>
+
+<table>
+  <tr>
+    <th>ID</th><th>Username</th><th>Имя</th><th>Подписка</th><th>Тариф</th>
+    <th>Автоплатёж</th><th>Выдать</th><th>Действия</th>
+  </tr>
+  {% for u in rows %}
+  <tr>
+    <td>{{ u.tg_id }}{% if u.blocked %} <span class="badge off">бан</span>{% endif %}</td>
+    <td>{% if u.username %}@{{ u.username }}{% else %}—{% endif %}</td>
+    <td>{{ u.full_name }}</td>
+    <td>{% if u.has_sub %}<span class="badge on">{{ u.status }}</span>{% else %}<span class="muted">нет</span>{% endif %}</td>
+    <td>{{ u.tariff }}</td>
+    <td>{{ u.autopay }}</td>
+    <td>
+      <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/grant">
+        <div class="row">
+          <select name="code" style="width:auto;">
+            {% for t in tariffs %}<option value="{{ t.code }}">{{ t.emoji }} {{ t.title }}</option>{% endfor %}
+          </select>
+          <button class="small" type="submit">Выдать</button>
+        </div>
+      </form>
+    </td>
+    <td>
+      <div class="row">
+        {% if u.has_sub %}
+        <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/stop_autopay">
+          <button class="small gray" type="submit">Стоп автоплатёж</button></form>
+        <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/cancel">
+          <button class="small red" type="submit">Отменить</button></form>
+        {% endif %}
+        {% if u.blocked %}
+        <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/unblock">
+          <button class="small gray" type="submit">Разбан</button></form>
+        {% else %}
+        <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/block">
+          <button class="small red" type="submit">Бан</button></form>
+        {% endif %}
+      </div>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% if not rows %}<p class="muted" style="margin-top:16px;">Ничего не найдено.</p>{% endif %}
+{% endblock %}
