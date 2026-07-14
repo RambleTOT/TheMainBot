@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title">Инструкция</h1>
+<p class="page-sub">Как менять тексты, цены, картинки и эмодзи. Нажмите на раздел, чтобы раскрыть.</p>
+
+<details class="faq" open>
+  <summary>Главные правила (прочитать первым)</summary>
+  <div class="faq-body">
+    <ul>
+      <li><b>Плейсхолдеры в фигурных скобках</b> — например <code>{date}</code>, <code>{title}</code>,
+        <code>{price}</code>, <code>{duration}</code> — <b>не удаляйте и не переименовывайте</b>.
+        Бот сам подставляет в них значения (дату окончания, название тарифа, цену и т.д.).
+        Текст вокруг них можно менять свободно.</li>
+      <li>После любой правки нажмите <b>«Сохранить всё»</b> — изменения применяются в боте сразу,
+        перезапуск не нужен.</li>
+      <li>Можно вставлять <b>обычные эмодзи</b> прямо в текст (просто скопируйте нужный смайлик).</li>
+    </ul>
+  </div>
+</details>
+
+<details class="faq">
+  <summary>Как менять тексты — что можно, что нельзя</summary>
+  <div class="faq-body">
+    <p><b>Можно:</b></p>
+    <ul>
+      <li>менять любые слова и предложения;</li>
+      <li>оформлять текст HTML-тегами:
+        <code>&lt;b&gt;жирный&lt;/b&gt;</code>,
+        <code>&lt;i&gt;курсив&lt;/i&gt;</code>,
+        <code>&lt;a href="https://ссылка"&gt;текст-ссылка&lt;/a&gt;</code>;</li>
+      <li>добавлять переносы строк (Enter) и эмодзи.</li>
+    </ul>
+    <p><b>Нельзя / осторожно:</b></p>
+    <ul>
+      <li>не удаляйте плейсхолдеры <code>{…}</code> (см. первый раздел);</li>
+      <li>не используйте другие HTML-теги, кроме перечисленных — Telegram их не поймёт;</li>
+      <li>закрывайте теги: на каждый <code>&lt;b&gt;</code> должен быть <code>&lt;/b&gt;</code>.
+        Если тег не закрыть — сообщение может не отправиться.</li>
+    </ul>
+    <p class="muted">Порядок: раздел <b>«Тексты»</b> → находите нужное поле → правите → внизу
+      <b>«Сохранить всё»</b>.</p>
+  </div>
+</details>
+
+<details class="faq">
+  <summary>Премиум-эмодзи (кастомные, анимированные)</summary>
+  <div class="faq-body">
+    <p>Обычные эмодзи работают всегда. Для <b>кастомных премиум-эмодзи</b> нужно:</p>
+    <ol>
+      <li>У <b>владельца бота</b> должен быть <b>Telegram Premium</b> (без него бот не может их отправлять).</li>
+      <li>Отправьте нужный премиум-эмодзи в бота <b>@FIND_STICKER_ID_BOT</b>.
+        Он пришлёт сообщение с <code>custom_emoji_id</code> и готовыми строками — как на примере:</li>
+    </ol>
+    <div class="codeblock">custom_emoji_id: 5203977384528745776
+HTML:
+&lt;tg-emoji emoji-id="5203977384528745776"&gt;🙂&lt;/tg-emoji&gt;</div>
+    <ol start="3">
+      <li>Скопируйте строку из блока <b>HTML</b> и вставьте её в нужное место текста в админке.</li>
+    </ol>
+    <p>Здесь <code>🙂</code> — обычный эмодзи-замена: его увидят те, у кого премиум-эмодзи не
+      отображается. Можно поставить любой похожий обычный смайлик.</p>
+    <p class="muted">Итог в поле выглядит так:
+      <code>Добро пожаловать &lt;tg-emoji emoji-id="5203977384528745776"&gt;🙂&lt;/tg-emoji&gt;</code></p>
+  </div>
+</details>
+
+<details class="faq">
+  <summary>Картинки к сообщениям</summary>
+  <div class="faq-body">
+    <p>В разделе <b>«Тексты»</b> вверху — блок <b>«Картинки к сообщениям»</b>. Для каждого сообщения
+      (приветствие, экран тарифов, «Подробнее о приватке», после оплаты) можно:</p>
+    <ul>
+      <li><b>Загрузить</b> картинку (JPG, PNG или WebP, до 5 МБ) — бот пришлёт фото вместе с текстом;</li>
+      <li><b>Заменить</b> на другую;</li>
+      <li><b>Удалить</b> — тогда сообщение снова уходит просто текстом.</li>
+    </ul>
+  </div>
+</details>
+
+<details class="faq">
+  <summary>Как менять цены и тарифы</summary>
+  <div class="faq-body">
+    <p>Раздел <b>«Тарифы и цены»</b>. У каждого тарифа:</p>
+    <ul>
+      <li><b>Цена ₽</b> — цена в рублях; поменяли → <b>«Сохранить»</b> в этой строке;</li>
+      <li><b>Название</b> и <b>Эмодзи</b> — как тариф показывается в боте;</li>
+      <li><b>Мес.</b> — срок в месяцах; <b>пусто = «Навсегда»</b>;</li>
+      <li><b>Порядок</b> — в каком порядке тарифы идут в списке (меньше = выше);</li>
+      <li><b>Активен</b> — снимите галочку, чтобы временно спрятать тариф из бота.</li>
+    </ul>
+    <p>Внизу можно <b>добавить новый тариф</b>, а красной кнопкой — удалить существующий.</p>
+    <p class="muted">Изменения применяются в боте сразу.</p>
+  </div>
+</details>
+
+<details class="faq">
+  <summary>Пользователи (выдать доступ, бан, отмена)</summary>
+  <div class="faq-body">
+    <p>Раздел <b>«Пользователи»</b>: поиск по Telegram ID или @username, и по каждому:</p>
+    <ul>
+      <li><b>Выдать</b> — вручную открыть подписку по выбранному тарифу (без оплаты);</li>
+      <li><b>Стоп автоплатёж</b> — отключить автопродление;</li>
+      <li><b>Отменить</b> — закрыть подписку и убрать из каналов;</li>
+      <li><b>Бан / Разбан</b> — заблокировать доступ (заблокированный не сможет войти в ресурсы,
+        даже по подарочной ссылке).</li>
+    </ul>
+  </div>
+</details>
+
+<details class="faq">
+  <summary>Оферта и ссылки</summary>
+  <div class="faq-body">
+    <p>Ссылка на оферту меняется в разделе <b>«Тексты»</b> → поле <b>«Ссылка на оферту»</b>.
+      Она показывается кнопкой на экране тарифа.</p>
+    <p>Ссылки внутри текстов оформляйте так:
+      <code>&lt;a href="https://ваша-ссылка"&gt;текст&lt;/a&gt;</code>.</p>
+  </div>
+</details>
+
+<style>
+  code{background:var(--surface-2);border:1px solid var(--line);border-radius:5px;
+    padding:1px 6px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    word-break:break-word}
+  .codeblock{background:#0f0f10;color:#e9e9e6;border-radius:10px;padding:14px 16px;margin:12px 0;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.7;
+    white-space:pre-wrap;word-break:break-word}
+  .faq{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+    box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
+  .faq>summary{list-style:none;cursor:pointer;padding:16px 20px;font-weight:600;font-size:15px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;transition:background .15s}
+  .faq>summary::-webkit-details-marker{display:none}
+  .faq>summary:hover{background:var(--surface-2)}
+  .faq>summary::after{content:"";flex:none;width:9px;height:9px;border-right:2px solid var(--ink-3);
+    border-bottom:2px solid var(--ink-3);transform:rotate(45deg);transition:transform .2s;margin-top:-3px}
+  .faq[open]>summary::after{transform:rotate(-135deg);margin-top:3px}
+  .faq[open]>summary{border-bottom:1px solid var(--line)}
+  .faq-body{padding:6px 20px 18px;font-size:14.5px;line-height:1.6;color:var(--ink)}
+  .faq-body ul,.faq-body ol{margin:8px 0;padding-left:22px}
+  .faq-body li{margin:5px 0}
+  .faq-body p{margin:10px 0}
+  @media (prefers-reduced-motion:reduce){.faq>summary::after{transition:none}}
+</style>
+{% endblock %}

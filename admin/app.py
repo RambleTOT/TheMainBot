@@ -168,6 +168,13 @@ async def home(request: Request):
     return _rr("/settings")
 
 
+@router.get("/help", response_class=HTMLResponse)
+async def help_page(request: Request):
+    if (r := _guard(request)):
+        return r
+    return _page(request, "help.html", {})
+
+
 # ------------------------- тексты / настройки -------------------------
 
 @router.get("/settings", response_class=HTMLResponse)
