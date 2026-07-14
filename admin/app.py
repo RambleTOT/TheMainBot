@@ -17,8 +17,8 @@ import time
 from datetime import datetime
 
 from aiogram import Bot
-from fastapi import APIRouter, FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, FastAPI, File, Form, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from starlette.middleware.sessions import SessionMiddleware
@@ -44,6 +44,11 @@ BASE = "/" + os.getenv("ADMIN_BASE_PATH", "admin").strip("/")
 if BASE == "/":
     BASE = ""
 
+# Папка для загруженных картинок (совпадает с MEDIA_DIR у бота).
+MEDIA_DIR = os.path.realpath(os.getenv("WELCOME_MEDIA_DIR") or "web/media")
+IMG_EXT = {".jpg", ".jpeg", ".png", ".webp"}
+MAX_IMG = 5 * 1024 * 1024
+
 # /docs, /redoc, /openapi.json отключены — не раскрываем API-поверхность.
 app = FastAPI(title="THE MAIN — админка", docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(
@@ -65,7 +70,11 @@ async def _startup() -> None:
 
 # ------------------------- утилиты -------------------------
 
-def _guard(request: Request) -> RedirectResponse | None:
+def _guard(request: Request):
+    # необязательный белый список IP (ADMIN_ALLOW_IPS в .env). Пусто = доступ по паролю всем.
+    if cfg.admin_allow_ips and _client_ip(request) not in cfg.admin_allow_ips:
+        log.warning("admin: доступ с не разрешённого IP %s", _client_ip(request))
+        return Response("Доступ запрещён", status_code=403)
     if not request.session.get("auth"):
         return RedirectResponse(f"{BASE}/login", status_code=303)
     return None
@@ -124,7 +133,10 @@ async def login(request: Request, password: str = Form("")):
     now = time.monotonic()
     if _login_locked.get(ip, 0) > now:
         return _rr("/login?locked=1")
-    if cfg.admin_password and hmac.compare_digest(password, cfg.admin_password):
+    # сравниваем байты (compare_digest на str падает, если пароль не ASCII — напр. кириллица)
+    if cfg.admin_password and hmac.compare_digest(
+        password.encode("utf-8"), cfg.admin_password.encode("utf-8")
+    ):
         _login_fails.pop(ip, None)
         _login_locked.pop(ip, None)
         request.session["auth"] = True
@@ -159,12 +171,14 @@ async def home(request: Request):
 # ------------------------- тексты / настройки -------------------------
 
 @router.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request, saved: int = 0):
+async def settings_page(request: Request, saved: int = 0, imgerr: int = 0):
     if (r := _guard(request)):
         return r
     values = await content.get_all_settings()
+    images = {k: bool(await content.get_setting(content.image_setting_key(k))) for k in content.IMAGE_MSGS}
     return _page(request, "settings.html",
-                 {"meta": content.SETTINGS_META, "values": values, "saved": bool(saved)})
+                 {"meta": content.SETTINGS_META, "values": values, "images": images,
+                  "image_msgs": content.IMAGE_MSGS, "saved": bool(saved), "imgerr": bool(imgerr)})
 
 
 @router.post("/settings/save")
@@ -173,9 +187,70 @@ async def settings_save(request: Request):
         return r
     form = await request.form()
     for key, *_ in content.SETTINGS_META:
-        if key in form:
+        # welcome_image редактируется отдельным блоком загрузки, не из общей формы
+        if key != "welcome_image" and key in form:
             await content.set_setting(key, str(form[key]))
     return _rr("/settings?saved=1")
+
+
+def _img_base(key: str) -> str:
+    return os.path.join(MEDIA_DIR, "img_" + key)
+
+
+@router.post("/settings/upload_image")
+async def upload_image(request: Request, key: str = Form(...), file: UploadFile = File(...)):
+    if (r := _guard(request)):
+        return r
+    if key not in content.IMAGE_MSGS:
+        return _rr("/settings?imgerr=1")
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in IMG_EXT:
+        return _rr("/settings?imgerr=1")
+    data = await file.read()
+    if not data or len(data) > MAX_IMG:
+        return _rr("/settings?imgerr=1")
+    dest = _img_base(key) + ext
+    try:
+        os.makedirs(MEDIA_DIR, exist_ok=True)
+        with open(dest, "wb") as f:
+            f.write(data)
+    except OSError:
+        log.exception("upload_image: не удалось записать %s (права на web/media?)", dest)
+        return _rr("/settings?imgerr=1")
+    for e in IMG_EXT - {ext}:  # убрать картинку в другом формате
+        try:
+            os.remove(_img_base(key) + e)
+        except OSError:
+            pass
+    await content.set_setting(content.image_setting_key(key), dest)
+    return _rr("/settings?saved=1")
+
+
+@router.post("/settings/clear_image")
+async def clear_image(request: Request, key: str = Form(...)):
+    if (r := _guard(request)):
+        return r
+    if key not in content.IMAGE_MSGS:
+        return _rr("/settings")
+    await content.set_setting(content.image_setting_key(key), "")
+    for e in IMG_EXT:
+        try:
+            os.remove(_img_base(key) + e)
+        except OSError:
+            pass
+    return _rr("/settings?saved=1")
+
+
+@router.get("/media/{key}")
+async def media_image(request: Request, key: str):
+    if (r := _guard(request)):
+        return r
+    if key in content.IMAGE_MSGS:
+        for e in (".jpg", ".jpeg", ".png", ".webp"):
+            p = _img_base(key) + e
+            if os.path.isfile(p):
+                return FileResponse(p, headers={"Cache-Control": "no-store"})
+    return Response(status_code=404)
 
 
 # ------------------------- тарифы (цены) -------------------------

@@ -23,6 +23,10 @@ def _one_id(raw: str | None) -> int | None:
     return ids[0] if ids else None
 
 
+def _str_list(raw: str | None) -> list[str]:
+    return [p.strip() for p in (raw or "").replace(";", ",").split(",") if p.strip()]
+
+
 @dataclass
 class Resource:
     key: str           # технический ключ
@@ -41,6 +45,7 @@ class Config:
     admin_password: str | None
     admin_secret: str | None
     admin_secure_cookies: bool
+    admin_allow_ips: list[str]
 
 
 def load_config() -> Config:
@@ -65,6 +70,7 @@ def load_config() -> Config:
         # (иначе cookie сессии можно подделать). Проверяется при старте админки.
         admin_secret=os.getenv("ADMIN_SECRET") or None,
         admin_secure_cookies=(os.getenv("ADMIN_SECURE_COOKIES", "false").lower() in ("1", "true", "yes")),
+        admin_allow_ips=_str_list(os.getenv("ADMIN_ALLOW_IPS")),
     )
 
 

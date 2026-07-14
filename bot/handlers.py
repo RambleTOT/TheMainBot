@@ -42,8 +42,8 @@ IMG_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 MEDIA_DIR = os.path.realpath(os.getenv("WELCOME_MEDIA_DIR") or "web/media")
 
 
-def _welcome_photo(image: str):
-    """Безопасно интерпретирует welcome_image.
+def _media_photo(image: str):
+    """Безопасно интерпретирует значение картинки сообщения.
 
     http(s)-URL или Telegram file_id — возвращаем как есть. Локальный путь читаем
     ТОЛЬКО если он внутри MEDIA_DIR и это картинка — иначе None. Это закрывает чтение
@@ -58,6 +58,24 @@ def _welcome_photo(image: str):
             return FSInputFile(p)
         return None
     return image  # трактуем как file_id
+
+
+async def _send_post(target: Message, key: str, text: str, reply_markup=None) -> None:
+    """Отправляет сообщение key с текстом text; если к нему прикреплена картинка —
+    фото с подписью (или фото + отдельный текст, если текст длиннее подписи в 1024)."""
+    img = await content.get_setting(content.image_setting_key(key))
+    photo = _media_photo(img) if img else None
+    if photo is not None:
+        try:
+            if len(text) <= 1024:
+                await target.answer_photo(photo, caption=text, reply_markup=reply_markup)
+                return
+            await target.answer_photo(photo)
+            await target.answer(text, reply_markup=reply_markup, link_preview_options=NO_PREVIEW)
+            return
+        except Exception:  # noqa: BLE001
+            log.exception("Не удалось отправить фото для %s, шлю текстом", key)
+    await target.answer(text, reply_markup=reply_markup, link_preview_options=NO_PREVIEW)
 
 
 # ------------------------- вспомогательное -------------------------
@@ -79,16 +97,7 @@ async def _active_sub_text(sub: SubInfo) -> str:
 
 
 async def _send_welcome(message: Message) -> None:
-    text = await content.get_text("welcome_text")
-    image = await content.get_setting("welcome_image")
-    photo = _welcome_photo(image) if image else None
-    if photo is not None:
-        try:
-            await message.answer_photo(photo, caption=text, reply_markup=kb.main_menu())
-            return
-        except Exception:  # noqa: BLE001
-            log.exception("Не удалось отправить фото приветствия, шлю текстом")
-    await message.answer(text, reply_markup=kb.main_menu(), link_preview_options=NO_PREVIEW)
+    await _send_post(message, "welcome_text", await content.get_text("welcome_text"), kb.main_menu())
 
 
 # ------------------------- /start -------------------------
@@ -135,7 +144,7 @@ async def _show_tariffs(message: Message) -> None:
     tariffs = await content.get_tariffs(active_only=True)
     offer = await content.get_setting("offer_url")
     text = await content.get_text("tariffs_intro")
-    await message.answer(text, reply_markup=kb.tariffs_kb(tariffs, offer or None))
+    await _send_post(message, "tariffs_intro", text, kb.tariffs_kb(tariffs, offer or None))
 
 
 @router.message(F.text == texts.BTN_TARIFFS)
@@ -212,7 +221,7 @@ async def paid_test(cq: CallbackQuery, bot: Bot) -> None:
     links = await grant_access(bot, cq.from_user.id)
     thanks = await content.get_text("thanks_text")
     details = await _active_sub_text(sub)
-    await cq.message.answer(f"{thanks}\n\n{details}", reply_markup=kb.subscription_kb(sub, links))
+    await _send_post(cq.message, "thanks_text", f"{thanks}\n\n{details}", kb.subscription_kb(sub, links))
     await cq.answer("Оплата подтверждена ✅")
 
 
@@ -280,7 +289,7 @@ async def ar_back(cq: CallbackQuery) -> None:
 
 @router.message(F.text == texts.BTN_INFO)
 async def info(message: Message) -> None:
-    await message.answer(await content.get_text("privatka_text"), link_preview_options=NO_PREVIEW)
+    await _send_post(message, "privatka_text", await content.get_text("privatka_text"))
 
 
 @router.callback_query(F.data == "res_soon")

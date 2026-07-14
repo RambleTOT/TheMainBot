@@ -26,8 +26,6 @@ DEFAULT_SETTINGS: dict[str, str] = {
         "Мы ждём тебя.\n"
         "С уважением, Main 🐘"
     ),
-    "welcome_image": "",  # file_id или путь к картинке приветствия (необязательно)
-
     "tariffs_intro": "Выбери свой тарифный план 👇",
     "tariffs_disclaimer": (
         "Оплачивая любой тариф на подписку, вы подтверждаете согласие с офертой и "
@@ -144,8 +142,7 @@ DEFAULT_SETTINGS: dict[str, str] = {
 
 # Метаданные для админки: подпись, многострочный ли, подсказка о плейсхолдерах.
 SETTINGS_META: list[tuple[str, str, bool, str]] = [
-    ("welcome_text", "Приветствие /start", True, "HTML. Ссылку оформляйте как <a href=\"URL\">текст</a>."),
-    ("welcome_image", "Картинка приветствия (file_id)", False, "Лучше указывать file_id (загрузите фото боту). Локальный путь допускается только внутри web/media."),
+    ("welcome_text", "Приветствие /start", True, "HTML. Ссылка: <a href=\"URL\">текст</a>. Кастом-эмодзи: <tg-emoji emoji-id=\"ID\">🔥</tg-emoji>."),
     ("tariffs_intro", "Заголовок экрана «Тарифы»", False, ""),
     ("tariffs_disclaimer", "Дисклеймер на экране тарифов", True, ""),
     ("offer_url", "Ссылка на оферту", False, ""),
@@ -171,6 +168,19 @@ SETTINGS_META: list[tuple[str, str, bool, str]] = [
     ("resource_soon", "Ресурс ещё не настроен", False, ""),
     ("access_blocked", "Сообщение заблокированному пользователю", True, ""),
 ]
+
+# Сообщения, к которым можно прикрепить картинку (управляется загрузкой в админке).
+IMAGE_MSGS: dict[str, str] = {
+    "welcome_text": "Приветствие (/start)",
+    "tariffs_intro": "Экран «Тарифы»",
+    "privatka_text": "Подробнее о приватке",
+    "thanks_text": "После оплаты",
+}
+
+
+def image_setting_key(msg_key: str) -> str:
+    return f"img::{msg_key}"
+
 
 DEFAULT_TARIFFS: list[tuple[str, str, str, int, int | None, int]] = [
     # code, title, emoji, price_rub, months, sort_order
