@@ -4,6 +4,25 @@
 <p class="page-sub">Цена — в рублях. Срок (мес.) пустой = «Навсегда». Порядок задаёт сортировку в боте.
 Изменения применяются сразу.</p>
 
+<div class="panel salespanel">
+  <div>
+    <div class="imgname">Продажи в боте</div>
+    <div class="muted" style="font-size:13px;margin-top:2px">
+      {% if sales_on %}Пользователи могут оформлять и оплачивать подписки.
+      {% else %}Оформление остановлено — при открытии «Тарифов» бот показывает заглушку.{% endif %}
+    </div>
+  </div>
+  <div class="row" style="gap:12px;align-items:center">
+    {% if sales_on %}<span class="badge ok"><span class="dot"></span>включены</span>
+    {% else %}<span class="badge danger"><span class="dot"></span>остановлены</span>{% endif %}
+    <form method="post" action="{{ base }}/sales/toggle"
+          {% if sales_on %}onsubmit="return confirm('Остановить продажи? Пользователи не смогут оформить подписку.')"{% endif %}>
+      <input type="hidden" name="enabled" value="{{ 'off' if sales_on else 'on' }}">
+      <button class="btn {{ 'danger' if sales_on else '' }} sm" type="submit">{{ 'Остановить продажи' if sales_on else 'Включить продажи' }}</button>
+    </form>
+  </div>
+</div>
+
 <div class="tariffs">
   {% for t in tariffs %}
   <div class="panel trow">
@@ -66,6 +85,9 @@
 </div>
 
 <style>
+  .salespanel{display:flex;align-items:center;justify-content:space-between;gap:16px;
+    flex-wrap:wrap;margin-bottom:18px}
+  .salespanel .imgname{font-weight:700;font-size:15px}
   .tariffs{display:flex;flex-direction:column;gap:12px}
   .trow{display:flex;align-items:flex-end;gap:12px;padding:16px 18px}
   .trow .grid,.add{flex:1;display:grid;gap:12px;

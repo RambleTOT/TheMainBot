@@ -46,6 +46,16 @@ class Config:
     admin_secret: str | None
     admin_secure_cookies: bool
     admin_allow_ips: list[str]
+    # --- CloudPayments ---
+    cp_public_id: str | None
+    cp_api_secret: str | None
+    cp_taxation_system: int   # 0 ОСН, 1 УСН доход, 2 УСН д-р, ...
+    cp_vat: str | None        # "" / None = без НДС; "0","10","20"
+    public_base_url: str      # база для платёжной страницы/вебхуков
+
+    @property
+    def cp_enabled(self) -> bool:
+        return bool(self.cp_public_id and self.cp_api_secret)
 
 
 def load_config() -> Config:
@@ -71,6 +81,11 @@ def load_config() -> Config:
         admin_secret=os.getenv("ADMIN_SECRET") or None,
         admin_secure_cookies=(os.getenv("ADMIN_SECURE_COOKIES", "false").lower() in ("1", "true", "yes")),
         admin_allow_ips=_str_list(os.getenv("ADMIN_ALLOW_IPS")),
+        cp_public_id=os.getenv("CLOUDPAYMENTS_PUBLIC_ID") or None,
+        cp_api_secret=os.getenv("CLOUDPAYMENTS_API_SECRET") or None,
+        cp_taxation_system=int(os.getenv("CP_TAXATION_SYSTEM") or "1"),
+        cp_vat=(os.getenv("CP_VAT") or None),
+        public_base_url=(os.getenv("PUBLIC_BASE_URL") or "https://themainpsychology.ru").rstrip("/"),
     )
 
 

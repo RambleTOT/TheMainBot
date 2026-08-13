@@ -28,6 +28,8 @@ class User(Base):
     username: Mapped[str | None] = mapped_column(String(64), nullable=True)
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)  # бан из админки
+    card_token: Mapped[str | None] = mapped_column(String(256), nullable=True)  # токен CloudPayments для автосписаний
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)  # e-mail плательщика для чеков 54-ФЗ (автопродление)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
@@ -60,6 +62,7 @@ class Payment(Base):
     is_recurring: Mapped[bool] = mapped_column(Boolean, default=False)
     is_gift: Mapped[bool] = mapped_column(Boolean, default=False)  # покупка «в подарок»
     gift_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    cp_transaction_id: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True, index=True)  # id платежа CloudPayments (идемпотентность)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

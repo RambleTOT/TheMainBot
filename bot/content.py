@@ -138,6 +138,9 @@ DEFAULT_SETTINGS: dict[str, str] = {
     "fallback": "Выбери действие в меню ниже 👇",
     "resource_soon": "Ссылка появится после настройки ресурсов.",
     "access_blocked": "Доступ к ресурсам ограничен. Если это ошибка — напишите в поддержку.",
+    # Глобальный переключатель продаж (управляется тумблером в админке, не текстом).
+    "sales_enabled": "on",
+    "sales_closed": "Продажи временно приостановлены. Оформить подписку сейчас нельзя — загляните позже.",
 }
 
 # Метаданные для админки: подпись, многострочный ли, подсказка о плейсхолдерах.
@@ -167,6 +170,7 @@ SETTINGS_META: list[tuple[str, str, bool, str]] = [
     ("fallback", "Ответ на непонятную команду", False, ""),
     ("resource_soon", "Ресурс ещё не настроен", False, ""),
     ("access_blocked", "Сообщение заблокированному пользователю", True, ""),
+    ("sales_closed", "Сообщение, когда продажи остановлены", True, ""),
 ]
 
 # Сообщения, к которым можно прикрепить картинку (управляется загрузкой в админке).
@@ -252,6 +256,15 @@ async def set_setting(key: str, value: str) -> None:
         else:
             row.value = value
         await s.commit()
+
+
+async def sales_enabled() -> bool:
+    """Глобальный флаг продаж (тумблер в админке). off = продажи остановлены."""
+    return (await get_setting("sales_enabled")) != "off"
+
+
+async def set_sales_enabled(enabled: bool) -> None:
+    await set_setting("sales_enabled", "on" if enabled else "off")
 
 
 async def get_all_settings() -> dict[str, str]:

@@ -13,6 +13,7 @@ from aiogram.types import (
     Message,
 )
 
+from . import cloudpayments
 from . import content
 from . import keyboards as kb
 from . import texts
@@ -78,6 +79,14 @@ async def _send_post(target: Message, key: str, text: str, reply_markup=None) ->
     await target.answer(text, reply_markup=reply_markup, link_preview_options=NO_PREVIEW)
 
 
+async def _sales_open_or_notify(cq: CallbackQuery) -> bool:
+    """True если продажи включены; иначе показывает заглушку и возвращает False."""
+    if await content.sales_enabled():
+        return True
+    await cq.answer(await content.get_text("sales_closed"), show_alert=True)
+    return False
+
+
 # ------------------------- вспомогательное -------------------------
 
 async def _active_sub_text(sub: SubInfo) -> str:
@@ -141,6 +150,9 @@ async def cmd_id(message: Message) -> None:
 # ------------------------- Тарифы -------------------------
 
 async def _show_tariffs(message: Message) -> None:
+    if not await content.sales_enabled():
+        await message.answer(await content.get_text("sales_closed"))
+        return
     tariffs = await content.get_tariffs(active_only=True)
     offer = await content.get_setting("offer_url")
     text = await content.get_text("tariffs_intro")
@@ -160,6 +172,8 @@ async def open_tariffs(cq: CallbackQuery) -> None:
 
 @router.callback_query(F.data.startswith("t:"))
 async def tariff_detail(cq: CallbackQuery) -> None:
+    if not await _sales_open_or_notify(cq):
+        return
     code = cq.data.split(":", 1)[1]
     tariff = await content.get_tariff(code)
     if tariff is None or not tariff.is_active:
@@ -189,16 +203,24 @@ async def pay_gift(cq: CallbackQuery) -> None:
 
 
 async def _pay_screen(cq: CallbackQuery, *, gift: bool, key: str) -> None:
+    if not await _sales_open_or_notify(cq):
+        return
     code = cq.data.split(":", 1)[1]
     tariff = await content.get_tariff(code)
     if tariff is None or not tariff.is_active:
         await cq.answer("Тариф недоступен", show_alert=True)
         return
     cfg = get_config()
-    # PRODUCTION: здесь создаётся платёж у ЮKassa и возвращается confirmation_url;
-    # подтверждение — вебхуком от провайдера, а не кнопкой пользователя.
+    # Реальная оплата: подписанная ссылка на платёжную страницу с виджетом CloudPayments.
+    # Подтверждение приходит вебхуком от провайдера (payweb), а не кнопкой пользователя.
+    pay_url = None
+    if cfg.cp_enabled:
+        signed = cloudpayments.sign_pay({"uid": cq.from_user.id, "code": tariff.code, "gift": gift})
+        pay_url = f"{cfg.public_base_url}/pay?t={signed}"
     text = await content.get_text(key, title=_esc(tariff.title), price=fmt_price(tariff.price_rub))
-    await cq.message.answer(text, reply_markup=kb.pay_kb(code, gift=gift, test=cfg.test_mode))
+    # демо-кнопку «оплатил» показываем только пока CloudPayments не подключён
+    await cq.message.answer(text, reply_markup=kb.pay_kb(
+        code, gift=gift, confirmation_url=pay_url, test=cfg.test_mode and not cfg.cp_enabled))
     await cq.answer()
 
 
@@ -206,13 +228,15 @@ async def _pay_screen(cq: CallbackQuery, *, gift: bool, key: str) -> None:
 async def paid_test(cq: CallbackQuery, bot: Bot) -> None:
     """ДЕМО-подтверждение оплаты (себе). В production заменяется вебхуком провайдера."""
     cfg = get_config()
-    if not cfg.test_mode:
+    if not cfg.test_mode or cfg.cp_enabled:
         await cq.answer("Тестовая оплата отключена", show_alert=True)
         return
     code = cq.data.split(":", 1)[1]
     tariff = await content.get_tariff(code)
     if tariff is None:
         await cq.answer("Тариф не найден", show_alert=True)
+        return
+    if not await _sales_open_or_notify(cq):
         return
     if await is_blocked(cq.from_user.id):
         await cq.answer("Доступ ограничен", show_alert=True)
@@ -229,13 +253,15 @@ async def paid_test(cq: CallbackQuery, bot: Bot) -> None:
 async def paid_gift_test(cq: CallbackQuery, bot: Bot) -> None:
     """ДЕМО-подтверждение оплаты подарка. Выдаёт одноразовую ссылку для друга."""
     cfg = get_config()
-    if not cfg.test_mode:
+    if not cfg.test_mode or cfg.cp_enabled:
         await cq.answer("Тестовая оплата отключена", show_alert=True)
         return
     code = cq.data.split(":", 1)[1]
     tariff = await content.get_tariff(code)
     if tariff is None:
         await cq.answer("Тариф не найден", show_alert=True)
+        return
+    if not await _sales_open_or_notify(cq):
         return
     if await is_blocked(cq.from_user.id):
         await cq.answer("Доступ ограничен", show_alert=True)

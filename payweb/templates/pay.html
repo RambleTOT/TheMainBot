@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Оплата — THE MAIN</title>
+  <style>
+    :root { --bg:#0a0a0a; --fg:#f5f5f5; --muted:#8a8a8a; --line:#1e1e1e; --card:#111; }
+    * { box-sizing: border-box; }
+    html, body { margin:0; padding:0; background:var(--bg); color:var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:24px; }
+    .card { width:100%; max-width:420px; background:var(--card); border:1px solid var(--line);
+      border-radius:20px; padding:32px 28px; text-align:center; }
+    .brand { letter-spacing:.28em; font-size:12px; color:var(--muted); text-transform:uppercase; margin-bottom:22px; }
+    h1 { font-size:20px; font-weight:600; margin:0 0 6px; }
+    .sub { color:var(--muted); font-size:14px; margin:0 0 24px; }
+    .amount { font-size:40px; font-weight:700; letter-spacing:-.02em; margin:0 0 4px; }
+    .amount span { font-size:22px; color:var(--muted); font-weight:500; }
+    .per { color:var(--muted); font-size:13px; margin:0 0 28px; }
+    .btn { display:block; width:100%; border:0; border-radius:14px; padding:16px;
+      background:var(--fg); color:#000; font-size:16px; font-weight:600; cursor:pointer;
+      transition:opacity .15s ease; }
+    .btn:hover { opacity:.88; }
+    .btn:disabled { opacity:.5; cursor:default; }
+    .state { min-height:20px; margin-top:16px; font-size:14px; color:var(--muted); }
+    .note { margin-top:22px; font-size:12px; line-height:1.5; color:var(--muted); }
+    .note a { color:var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">The&nbsp;Main</div>
+    <h1>{{ title }}</h1>
+    <p class="sub">{{ "Подписка в подарок" if is_gift else "Оформление подписки" }}</p>
+    <div class="amount">{{ "{:,}".format(amount).replace(",", " ") }} <span>₽</span></div>
+    <p class="per">{{ "Разовый платёж за подарок" if is_gift else "Оплата картой · безопасно через CloudPayments" }}</p>
+    <button class="btn" id="payBtn" type="button">Перейти к оплате</button>
+    <div class="state" id="state"></div>
+    <p class="note">Нажимая «Перейти к оплате», вы соглашаетесь с условиями оферты.
+      Данные карты вводятся в защищённом окне CloudPayments — магазин их не видит.</p>
+  </div>
+
+  <!-- SRI намеренно не задаётся: CloudPayments обновляет bundle без публикации хэша,
+       фиксированный integrity ломал бы оплату. Защита: HTTPS + CSP script-src,
+       ограниченный доменом widget.cloudpayments.ru (см. nginx location /pay). -->
+  <script src="https://widget.cloudpayments.ru/bundles/cloudpayments.js"></script>
+  <script>
+    (function () {
+      var btn = document.getElementById('payBtn');
+      var state = document.getElementById('state');
+      var botUrl = {{ bot_url|tojson }};
+
+      function openWidget() {
+        if (typeof cp === 'undefined') {
+          state.textContent = 'Не удалось загрузить форму оплаты. Обновите страницу.';
+          return;
+        }
+        btn.disabled = true;
+        state.textContent = '';
+        var widget = new cp.CloudPayments();
+        widget.pay('charge', {
+          publicId: {{ public_id|tojson }},
+          description: {{ description|tojson }},
+          amount: {{ amount }},
+          currency: 'RUB',
+          accountId: {{ account_id|tojson }},
+          invoiceId: {{ invoice_id|tojson }},
+          data: {{ data_json|safe }}
+        }, {
+          onSuccess: function () {
+            state.textContent = 'Оплата прошла ✅ Возвращаем в Telegram…';
+            setTimeout(function () { window.location = botUrl; }, 1800);
+          },
+          onFail: function (reason) {
+            btn.disabled = false;
+            btn.textContent = 'Попробовать снова';
+            state.textContent = 'Платёж не завершён.';
+          },
+          onComplete: function () {}
+        });
+      }
+
+      btn.addEventListener('click', openWidget);
+      // автозапуск виджета при открытии страницы
+      window.addEventListener('load', openWidget);
+    })();
+  </script>
+</body>
+</html>

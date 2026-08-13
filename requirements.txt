@@ -7,15 +7,14 @@ APScheduler>=3.10,<4
 python-dateutil>=2.9
 tzdata>=2024.1
 
-# --- Веб-админка (тексты, цены, пользователи) ---
+# --- Веб-админка (тексты, цены, пользователи) + платёжный сервис (payweb) ---
 fastapi>=0.110
 uvicorn[standard]>=0.29
 jinja2>=3.1
 python-multipart>=0.0.9
 itsdangerous>=2.1
+# HTTP-клиент для CloudPayments (тянется и как зависимость aiogram, фиксируем явно)
+aiohttp>=3.9
 
 # Для production на PostgreSQL дополнительно установите:
 # asyncpg>=0.29
-#
-# Для реального приёма платежей (ЮKassa) — после согласования провайдера:
-# yookassa>=3.0

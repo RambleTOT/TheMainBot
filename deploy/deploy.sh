@@ -55,15 +55,17 @@ sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" |
 echo "==> Автозапуск БД на загрузке"
 systemctl enable postgresql || true
 
-echo "==> systemd сервисы (бот + админка + ежедневный бэкап)"
+echo "==> systemd сервисы (бот + админка + оплаты + ежедневный бэкап)"
 cp "$APP_DIR/deploy/themain-bot.service"    /etc/systemd/system/themain-bot.service
 cp "$APP_DIR/deploy/themain-admin.service"  /etc/systemd/system/themain-admin.service
+cp "$APP_DIR/deploy/themain-pay.service"    /etc/systemd/system/themain-pay.service
 cp "$APP_DIR/deploy/themain-backup.service" /etc/systemd/system/themain-backup.service
 cp "$APP_DIR/deploy/themain-backup.timer"   /etc/systemd/system/themain-backup.timer
 systemctl daemon-reload
 # enable = автозапуск при загрузке сервера; --now = запустить сейчас
 systemctl enable --now themain-bot.service
 systemctl enable --now themain-admin.service
+systemctl enable --now themain-pay.service
 systemctl enable --now themain-backup.timer
 
 echo "==> nginx"
@@ -71,6 +73,28 @@ cp "$APP_DIR/deploy/nginx-themain.conf" /etc/nginx/sites-available/themain
 ln -sf /etc/nginx/sites-available/themain /etc/nginx/sites-enabled/themain
 rm -f /etc/nginx/sites-enabled/default
 systemctl enable nginx || true
+
+# Бутстрап TLS: конфиг ссылается на боевой сертификат Let's Encrypt, которого при ПЕРВОМ
+# запуске ещё нет. Без него `nginx -t` упал бы (cannot load certificate) и оборвал скрипт
+# ДО certbot. Кладём временный самоподписанный + минимальный options-ssl, чтобы nginx
+# поднялся; ниже certbot заменит их настоящими.
+CERT_DIR="/etc/letsencrypt/live/$DOMAIN"
+if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
+  echo "  (нет боевого сертификата — временный самоподписанный до certbot)"
+  mkdir -p "$CERT_DIR"
+  if [ ! -f /etc/letsencrypt/options-ssl-nginx.conf ]; then
+    cat > /etc/letsencrypt/options-ssl-nginx.conf <<'EOF'
+ssl_session_cache shared:le_nginx_SSL:10m;
+ssl_session_timeout 1440m;
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_prefer_server_ciphers off;
+EOF
+  fi
+  openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+    -keyout "$CERT_DIR/privkey.pem" -out "$CERT_DIR/fullchain.pem" \
+    -subj "/CN=$DOMAIN" >/dev/null 2>&1
+fi
+
 nginx -t
 systemctl reload nginx
 
@@ -89,5 +113,6 @@ echo
 echo "==> Готово. Статус:"
 systemctl --no-pager --lines=0 status themain-bot.service   || true
 systemctl --no-pager --lines=0 status themain-admin.service || true
+systemctl --no-pager --lines=0 status themain-pay.service   || true
 echo "Бот:   journalctl -u themain-bot -f"
 echo "Админ: https://$DOMAIN/admin  (вход по ADMIN_PASSWORD)"

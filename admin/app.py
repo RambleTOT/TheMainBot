@@ -70,9 +70,13 @@ async def _startup() -> None:
 
 # ------------------------- утилиты -------------------------
 
+def _ip_allowed(request: Request) -> bool:
+    # необязательный белый список IP (ADMIN_ALLOW_IPS в .env). Пусто = доступ всем.
+    return (not cfg.admin_allow_ips) or _client_ip(request) in cfg.admin_allow_ips
+
+
 def _guard(request: Request):
-    # необязательный белый список IP (ADMIN_ALLOW_IPS в .env). Пусто = доступ по паролю всем.
-    if cfg.admin_allow_ips and _client_ip(request) not in cfg.admin_allow_ips:
+    if not _ip_allowed(request):
         log.warning("admin: доступ с не разрешённого IP %s", _client_ip(request))
         return Response("Доступ запрещён", status_code=403)
     if not request.session.get("auth"):
@@ -117,20 +121,39 @@ _login_locked: dict[str, float] = {}
 
 
 def _client_ip(request: Request) -> str:
-    ip = request.headers.get("x-real-ip") or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
-    return ip or (request.client.host if request.client else "?")
+    # За nginx X-Real-IP = $remote_addr (перезаписывается прокси — клиент не подделает).
+    # X-Forwarded-For НЕ используем: его первый элемент подделывается клиентом.
+    return request.headers.get("x-real-ip") or (request.client.host if request.client else "?")
 
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_form(request: Request, e: int = 0, locked: int = 0):
+    if not _ip_allowed(request):
+        return Response("Доступ запрещён", status_code=403)
     return _page(request, "login.html",
                  {"error": bool(e), "locked": bool(locked), "no_password": not cfg.admin_password})
 
 
+def _prune_login_state(now: float) -> None:
+    # чистим протухшие записи, чтобы структуры не росли бесконечно
+    for ip, until in list(_login_locked.items()):
+        if until <= now:
+            _login_locked.pop(ip, None)
+    for ip in list(_login_fails):
+        fresh = [t for t in _login_fails[ip] if now - t < _LOGIN_WINDOW]
+        if fresh:
+            _login_fails[ip] = fresh
+        else:
+            _login_fails.pop(ip, None)
+
+
 @router.post("/login")
 async def login(request: Request, password: str = Form("")):
+    if not _ip_allowed(request):
+        return Response("Доступ запрещён", status_code=403)
     ip = _client_ip(request)
     now = time.monotonic()
+    _prune_login_state(now)
     if _login_locked.get(ip, 0) > now:
         return _rr("/login?locked=1")
     # сравниваем байты (compare_digest на str падает, если пароль не ASCII — напр. кириллица)
@@ -204,6 +227,16 @@ def _img_base(key: str) -> str:
     return os.path.join(MEDIA_DIR, "img_" + key)
 
 
+def _is_image_bytes(data: bytes) -> bool:
+    """Проверка по сигнатуре файла (magic bytes), а не только по расширению."""
+    return (
+        data[:3] == b"\xff\xd8\xff"                       # JPEG
+        or data[:8] == b"\x89PNG\r\n\x1a\n"               # PNG
+        or (data[:4] == b"RIFF" and data[8:12] == b"WEBP")  # WebP
+        or data[:6] in (b"GIF87a", b"GIF89a")             # GIF
+    )
+
+
 @router.post("/settings/upload_image")
 async def upload_image(request: Request, key: str = Form(...), file: UploadFile = File(...)):
     if (r := _guard(request)):
@@ -214,7 +247,7 @@ async def upload_image(request: Request, key: str = Form(...), file: UploadFile 
     if ext not in IMG_EXT:
         return _rr("/settings?imgerr=1")
     data = await file.read()
-    if not data or len(data) > MAX_IMG:
+    if not data or len(data) > MAX_IMG or not _is_image_bytes(data):
         return _rr("/settings?imgerr=1")
     dest = _img_base(key) + ext
     try:
@@ -267,7 +300,16 @@ async def tariffs_page(request: Request):
     if (r := _guard(request)):
         return r
     tariffs = await content.get_tariffs(active_only=False)
-    return _page(request, "tariffs.html", {"tariffs": tariffs})
+    return _page(request, "tariffs.html",
+                 {"tariffs": tariffs, "sales_on": await content.sales_enabled()})
+
+
+@router.post("/sales/toggle")
+async def sales_toggle(request: Request, enabled: str = Form("")):
+    if (r := _guard(request)):
+        return r
+    await content.set_sales_enabled(enabled == "on")
+    return _rr("/tariffs")
 
 
 @router.post("/tariffs/save")
@@ -283,7 +325,9 @@ async def tariffs_save(
 ):
     if (r := _guard(request)):
         return r
-    months_val = int(months) if months.strip().isdigit() else None
+    # только положительное число месяцев = срочный тариф; 0/пусто/мусор = «Навсегда» (None).
+    # Это защищает от months=0 (иначе цикл автопродления в expire_due крутился бы вечно).
+    months_val = int(months) if months.strip().isdigit() and int(months) >= 1 else None
     await content.upsert_tariff(code.strip(), title.strip(), emoji.strip(), price_rub,
                                months_val, sort_order, is_active == "on")
     return _rr("/tariffs")
