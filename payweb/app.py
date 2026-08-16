@@ -67,6 +67,13 @@ async def pay_page(request: Request, t: str = ""):
     tariff = await content.get_tariff(str(payload.get("code", "")))
     if tariff is None or not tariff.is_active:
         return HTMLResponse("<h1>Тариф недоступен</h1>", status_code=404)
+    # Глобальный стоп-продаж должен действовать и на платёжной странице (а не только в
+    # боте): иначе по уже выданной подписанной ссылке можно оплатить после закрытия продаж.
+    if not await content.sales_enabled():
+        closed = await content.get_text("sales_closed")
+        return HTMLResponse(f"<!doctype html><meta charset=utf-8><title>Продажи закрыты</title>"
+                            f"<div style='font:16px sans-serif;max-width:420px;margin:20vh auto;"
+                            f"text-align:center'>{_esc(closed)}</div>", status_code=403)
 
     uid = int(payload["uid"])
     is_gift = bool(payload.get("gift"))
@@ -123,6 +130,9 @@ async def cp_check(request: Request):
     """Проверка перед списанием: подтверждаем сумму и существование тарифа."""
     fields = await _read_verified(request)
     if fields is None:
+        return JSONResponse({"code": 13})
+    # стоп-продаж: отклоняем ДО списания (Check приходит до захвата денег)
+    if not await content.sales_enabled():
         return JSONResponse({"code": 13})
     custom = _custom_data(fields)
     tariff = await content.get_tariff(str(custom.get("tariff", "")))

@@ -10,11 +10,12 @@ tzdata>=2024.1
 # --- Веб-админка (тексты, цены, пользователи) + платёжный сервис (payweb) ---
 fastapi>=0.110
 uvicorn[standard]>=0.29
-jinja2>=3.1
-python-multipart>=0.0.9
+# минимумы подняты до пропатченных версий (CVE-хардининг):
+jinja2>=3.1.6           # CVE-2024-34064 / CVE-2025-27516
+python-multipart>=0.0.18  # CVE-2024-53981 (DoS парсера форм)
 itsdangerous>=2.1
 # HTTP-клиент для CloudPayments (тянется и как зависимость aiogram, фиксируем явно)
-aiohttp>=3.9
+aiohttp>=3.10.11        # набор CVE aiohttp <3.10.11
 
 # Для production на PostgreSQL дополнительно установите:
 # asyncpg>=0.29
