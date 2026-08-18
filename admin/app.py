@@ -111,6 +111,21 @@ async def _revoke(tg_id: int) -> None:
         log.exception("admin revoke failed for %s", tg_id)
 
 
+async def _notify(tg_id: int, key: str) -> None:
+    """Отправляет пользователю текст настройки `key` (напр. при отмене подписки из админки)."""
+    try:
+        text = await content.get_text(key)
+        if not text or not text.strip():
+            return
+        bot = Bot(cfg.bot_token)
+        try:
+            await bot.send_message(tg_id, text)
+        finally:
+            await bot.session.close()
+    except Exception:  # noqa: BLE001
+        log.exception("admin notify failed for %s", tg_id)
+
+
 # ------------------------- аутентификация -------------------------
 # Защита от подбора пароля: пер-IP счётчик неудач + блокировка + задержка.
 _LOGIN_WINDOW = 600      # окно учёта неудач, сек
@@ -396,13 +411,17 @@ async def user_cancel(request: Request, tg_id: int):
     if (r := _guard(request)):
         return r
     sm = get_sessionmaker()
+    cancelled = False
     async with sm() as s:
         res = await s.execute(select(Subscription).where(Subscription.user_id == tg_id,
                                                          Subscription.status == "active"))
         for sub in res.scalars():
             sub.status = "cancelled"
+            cancelled = True
         await s.commit()
-    await _revoke(tg_id)
+    if cancelled:
+        await _revoke(tg_id)
+        await _notify(tg_id, "sub_cancelled")  # уведомляем пользователя в боте
     return _rr("/users")
 
 
