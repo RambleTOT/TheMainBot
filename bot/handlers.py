@@ -4,6 +4,7 @@ import os
 from html import escape as _esc
 
 from aiogram import Bot, F, Router
+from aiogram.enums import ChatType
 from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import (
     CallbackQuery,
@@ -35,6 +36,11 @@ from .services import (
 
 log = logging.getLogger(__name__)
 router = Router()
+
+# Бот реагирует на сообщения/команды ТОЛЬКО в личке. В группах и каналах (куда он
+# добавлен админом ради выдачи доступа) он молчит — отвечать на команды там не должен.
+# Заявки на вступление (chat_join_request) и inline-кнопки это НЕ затрагивает.
+router.message.filter(F.chat.type == ChatType.PRIVATE)
 
 NO_PREVIEW = LinkPreviewOptions(is_disabled=True)
 
@@ -326,7 +332,7 @@ async def res_soon(cq: CallbackQuery) -> None:
 # ------------------------- Заявки на вступление в ресурсы -------------------------
 
 @router.chat_join_request()
-async def on_join_request(update: ChatJoinRequest) -> None:
+async def on_join_request(update: ChatJoinRequest, bot: Bot) -> None:
     """Одобряем заявку только если у пользователя активная подписка и он не заблокирован.
 
     Так доступ нельзя получить по пересланной ссылке: впускает не ссылка, а бот —
@@ -343,9 +349,34 @@ async def on_join_request(update: ChatJoinRequest) -> None:
     if sub is not None and not await is_blocked(uid):
         await update.approve()
         log.info("Join approved: user=%s chat=%s", uid, update.chat.id)
+        await _maybe_welcome(bot, update)
     else:
         await update.decline()
         log.info("Join declined: user=%s chat=%s", uid, update.chat.id)
+
+
+async def _maybe_welcome(bot: Bot, update: ChatJoinRequest) -> None:
+    """Приветствие нового участника в ЧАТЕ (группе).
+
+    Включается непустым текстом «Приветствие нового участника в чате» в админке.
+    {user} → упоминание (тег) участника. В каналах не пишем (там нет смысла тегать).
+    """
+    if update.chat.type not in ("group", "supergroup"):
+        return
+    tmpl = await content.get_setting("chat_welcome_text")
+    if not tmpl or not tmpl.strip():
+        return  # пусто — бот молчит
+    u = update.from_user
+    name = _esc(u.full_name or u.first_name or "друг")
+    mention = f'<a href="tg://user?id={u.id}">{name}</a>'
+    try:
+        await bot.send_message(
+            update.chat.id,
+            await content.get_text("chat_welcome_text", user=mention),
+            link_preview_options=NO_PREVIEW,
+        )
+    except Exception:  # noqa: BLE001
+        log.exception("Не удалось отправить приветствие в чат %s", update.chat.id)
 
 
 @router.message()

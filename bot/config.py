@@ -69,6 +69,9 @@ def load_config() -> Config:
         Resource("forum", "🗣 Форум", os.getenv("RES_FORUM_URL") or None, _one_id(os.getenv("RES_FORUM_CHAT_ID"))),
         Resource("chat", "💬 Чат", os.getenv("RES_CHAT_URL") or None, _one_id(os.getenv("RES_CHAT_CHAT_ID"))),
     ]
+    # Показываем только НАСТРОЕННЫЕ ресурсы (есть ссылка или chat_id).
+    # Незаданные (например, форум, если его нет) — не отображаем вовсе.
+    resources = [r for r in resources if r.url or r.chat_id]
     return Config(
         bot_token=token,
         database_url=os.getenv("DATABASE_URL") or "sqlite+aiosqlite:///bot.db",

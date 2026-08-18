@@ -40,9 +40,11 @@
         </td>
         <td>
           <div class="row" style="justify-content:flex-end;gap:6px">
-            {% if u.has_sub %}
+            {% if u.autopay == "вкл" %}
             <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/stop_autopay">
               <button class="btn ghost sm" type="submit">Стоп автоплатёж</button></form>
+            {% endif %}
+            {% if u.has_sub %}
             <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/cancel"
                   onsubmit="return confirm('Отменить подписку пользователя {{ u.tg_id }}?')">
               <button class="btn danger sm" type="submit">Отменить</button></form>
