@@ -15,16 +15,19 @@ import logging
 import os
 import time
 from datetime import datetime
+from html import escape as _esc
 
 from aiogram import Bot
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 from fastapi import APIRouter, FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from starlette.middleware.sessions import SessionMiddleware
 
-from bot import content, services
-from bot.access import allow_rejoin, revoke_access
+from bot import content, keyboards as kb, services
+from bot.access import allow_rejoin, grant_access, revoke_access
 from bot.config import get_config
 from bot.database import Subscription, User, get_sessionmaker, init_db
 
@@ -124,6 +127,38 @@ async def _notify(tg_id: int, key: str) -> None:
             await bot.session.close()
     except Exception:  # noqa: BLE001
         log.exception("admin notify failed for %s", tg_id)
+
+
+async def _sub_text(sub) -> str:
+    """Текст «действующая подписка» — как в боте (тариф, срок, автопродление)."""
+    tariff = await content.get_tariff(sub.tariff_id)
+    title = tariff.title if tariff else sub.tariff_id
+    emoji = tariff.emoji if tariff else ""
+    if sub.is_forever:
+        date = await content.get_setting("forever_date_label")
+        autopay = "—"
+    else:
+        date = services.fmt_msk(sub.expires_at)
+        autopay = await content.get_setting("autopay_on" if sub.autorenew else "autopay_off")
+    return await content.get_text("my_sub_active", tariff=_esc(title), emoji=_esc(emoji),
+                                  date=date, autopay=_esc(autopay))
+
+
+async def _notify_granted(tg_id: int, sub) -> None:
+    """При выдаче подписки из админки: выдаём доступ и шлём пользователю пост как после оплаты
+    (благодарность + детали подписки + кнопки-ссылки на ресурсы)."""
+    try:
+        bot = Bot(cfg.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+        try:
+            links = await grant_access(bot, tg_id)
+            thanks = await content.get_text("thanks_text")
+            details = await _sub_text(sub)
+            await bot.send_message(tg_id, f"{thanks}\n\n{details}",
+                                   reply_markup=kb.subscription_kb(sub, links))
+        finally:
+            await bot.session.close()
+    except Exception:  # noqa: BLE001
+        log.exception("admin grant-notify failed for %s", tg_id)
 
 
 # ------------------------- аутентификация -------------------------
@@ -401,8 +436,10 @@ async def user_grant(request: Request, tg_id: int, code: str = Form(...)):
     tariff = await content.get_tariff(code)
     if tariff:
         await services.ensure_user(tg_id)
-        await services.activate_subscription(tg_id, tariff, autorenew=False,
-                                             provider="admin", record_payment=False)
+        # новая подписка — с включённым автопродлением (даже после прошлого отключения/возврата)
+        sub = await services.activate_subscription(tg_id, tariff, autorenew=True,
+                                                   provider="admin", record_payment=False)
+        await _notify_granted(tg_id, sub)  # выдать доступ + прислать пост как после оплаты
     return _rr("/users")
 
 
@@ -430,6 +467,14 @@ async def user_stop_autopay(request: Request, tg_id: int):
     if (r := _guard(request)):
         return r
     await services.stop_autorenew(tg_id)
+    return _rr("/users")
+
+
+@router.post("/users/{tg_id}/start_autopay")
+async def user_start_autopay(request: Request, tg_id: int):
+    if (r := _guard(request)):
+        return r
+    await services.start_autorenew(tg_id)
     return _rr("/users")
 
 

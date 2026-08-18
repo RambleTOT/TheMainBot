@@ -211,6 +211,24 @@ async def stop_autorenew(tg_id: int) -> bool:
         return True
 
 
+async def start_autorenew(tg_id: int) -> bool:
+    """Включает автопродление у активной срочной подписки (у «Навсегда» его нет)."""
+    sm = get_sessionmaker()
+    async with sm() as s:
+        res = await s.execute(
+            select(Subscription)
+            .where(Subscription.user_id == tg_id, Subscription.status == "active")
+            .order_by(Subscription.id.desc())
+        )
+        now = datetime.utcnow()
+        sub = next((x for x in res.scalars() if _is_active(x, now)), None)
+        if sub is None or sub.is_forever:
+            return False
+        sub.autorenew = True
+        await s.commit()
+        return True
+
+
 # ------------------------- подарочные подписки -------------------------
 
 async def create_gift_code(

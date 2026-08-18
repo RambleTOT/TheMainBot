@@ -43,6 +43,9 @@
             {% if u.autopay == "вкл" %}
             <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/stop_autopay">
               <button class="btn ghost sm" type="submit">Стоп автоплатёж</button></form>
+            {% elif u.autopay == "выкл" %}
+            <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/start_autopay">
+              <button class="btn ghost sm" type="submit">Включить автопродление</button></form>
             {% endif %}
             {% if u.has_sub %}
             <form class="inline" method="post" action="{{ base }}/users/{{ u.tg_id }}/cancel"
