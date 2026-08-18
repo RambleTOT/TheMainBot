@@ -13,6 +13,7 @@ BTN_INFO = "⚙️ Подробнее о приватке"
 # --- Inline-кнопки ---
 BTN_PAY = "💳 Оплатить"
 BTN_PAY_GIFT = "🎁 Оплатить для друга"
+BTN_GIFT_FRIEND = "🎁 Подарить другу"
 BTN_BACK = "◀️ Назад"
 BTN_BACK_HAND = "👈 Назад"
 BTN_PAID_TEST = "✅ Я оплатил (тест)"

@@ -331,6 +331,17 @@ async def ar_back(cq: CallbackQuery) -> None:
     await cq.answer()
 
 
+@router.callback_query(F.data == "gift_menu")
+async def gift_menu(cq: CallbackQuery) -> None:
+    """Подарить подписку другу из «Моя подписка»: выбор тарифа → gift-оплата (gp:)."""
+    if not await _sales_open_or_notify(cq):
+        return
+    tariffs = await content.get_tariffs(active_only=True)
+    await cq.message.answer(await content.get_text("gift_menu_intro"),
+                            reply_markup=kb.gift_tariffs_kb(tariffs))
+    await cq.answer()
+
+
 # ------------------------- Подробнее / прочее -------------------------
 
 @router.message(F.text == texts.BTN_INFO)

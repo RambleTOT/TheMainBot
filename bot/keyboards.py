@@ -66,11 +66,24 @@ def subscription_kb(sub: SubInfo | None, links: dict[str, str] | None = None) ->
             b.button(text=r.title, url=url)
         else:
             b.button(text=r.title, callback_data="res_soon")
+    # подарить подписку другу — доступно даже при активной своей подписке
+    b.button(text=texts.BTN_GIFT_FRIEND, callback_data="gift_menu")
     if sub and not sub.is_forever and sub.status == "active":
         if sub.autorenew:
             b.button(text=texts.BTN_STOP_AR, callback_data="ar_stop")
         else:
             b.button(text=texts.BTN_START_AR, callback_data="ar_start")
+    b.adjust(1)
+    return b.as_markup()
+
+
+def gift_tariffs_kb(tariffs: list[TariffDTO]) -> InlineKeyboardMarkup:
+    """Выбор тарифа для подарка → существующий gift-флоу (gp:{code})."""
+    b = InlineKeyboardBuilder()
+    for t in tariffs:
+        label = f"{t.emoji} {t.title}".strip()
+        b.button(text=label, callback_data=f"gp:{t.code}")
+    b.button(text=texts.BTN_BACK, callback_data="ar_back")
     b.adjust(1)
     return b.as_markup()
 
