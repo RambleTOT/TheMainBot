@@ -66,8 +66,11 @@ def subscription_kb(sub: SubInfo | None, links: dict[str, str] | None = None) ->
             b.button(text=r.title, url=url)
         else:
             b.button(text=r.title, callback_data="res_soon")
-    if sub and not sub.is_forever and sub.autorenew and sub.status == "active":
-        b.button(text=texts.BTN_STOP_AR, callback_data="ar_stop")
+    if sub and not sub.is_forever and sub.status == "active":
+        if sub.autorenew:
+            b.button(text=texts.BTN_STOP_AR, callback_data="ar_stop")
+        else:
+            b.button(text=texts.BTN_START_AR, callback_data="ar_start")
     b.adjust(1)
     return b.as_markup()
 

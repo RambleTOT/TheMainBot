@@ -30,6 +30,7 @@ from .services import (
     get_active_subscription,
     is_blocked,
     redeem_gift,
+    start_autorenew,
     stop_autorenew,
     upsert_user,
 )
@@ -304,6 +305,19 @@ async def ar_stop_yes(cq: CallbackQuery) -> None:
     ok = await stop_autorenew(cq.from_user.id)
     if ok:
         await cq.message.answer(await content.get_text("stop_ar_done"))
+    else:
+        await cq.message.answer(await content.get_text("my_sub_none"), reply_markup=kb.my_sub_none_kb())
+    await cq.answer()
+
+
+@router.callback_query(F.data == "ar_start")
+async def ar_start(cq: CallbackQuery) -> None:
+    ok = await start_autorenew(cq.from_user.id)
+    if ok:
+        await cq.message.answer(await content.get_text("start_ar_done"))
+        sub = await get_active_subscription(cq.from_user.id)
+        if sub:
+            await cq.message.answer(await _active_sub_text(sub), reply_markup=kb.subscription_kb(sub))
     else:
         await cq.message.answer(await content.get_text("my_sub_none"), reply_markup=kb.my_sub_none_kb())
     await cq.answer()
