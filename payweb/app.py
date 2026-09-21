@@ -205,7 +205,7 @@ async def _notify(uid: int, result: dict) -> None:
             links = await grant_access(bot, uid)
             thanks = await content.get_text("thanks_text")
             details = await _sub_text(sub, tariff)
-            await bot.send_message(uid, f"{thanks}\n\n{details}", reply_markup=kb.subscription_kb(sub, links))
+            await bot.send_message(uid, f"{thanks}\n\n{details}", reply_markup=await kb.subscription_kb(sub, links))
     except Exception:  # noqa: BLE001
         log.exception("Не удалось уведомить пользователя %s об оплате", uid)
 

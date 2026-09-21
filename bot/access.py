@@ -8,7 +8,7 @@ import logging
 
 from aiogram import Bot
 
-from .config import get_config
+from . import content
 
 log = logging.getLogger(__name__)
 
@@ -27,9 +27,8 @@ async def grant_access(bot: Bot, user_id: int) -> dict[str, str]:
     from .services import is_blocked
     if await is_blocked(user_id):
         return {}
-    cfg = get_config()
     links: dict[str, str] = {}
-    for r in cfg.resources:
+    for r in await content.get_resources():
         if r.chat_id:
             try:
                 invite = await bot.create_chat_invite_link(
@@ -52,8 +51,7 @@ async def revoke_access(bot: Bot, user_id: int) -> None:
     Делается ban + unban: пользователь вылетает из канала/группы, но может
     вернуться позже по новой ссылке (после повторной оплаты).
     """
-    cfg = get_config()
-    for r in cfg.resources:
+    for r in await content.get_resources():
         if not r.chat_id:
             continue
         try:
@@ -73,8 +71,7 @@ async def revoke_access(bot: Bot, user_id: int) -> None:
 
 async def allow_rejoin(bot: Bot, user_id: int) -> None:
     """Снимает бан во всех ресурсах (для разблокировки из админки / восстановления доступа)."""
-    cfg = get_config()
-    for r in cfg.resources:
+    for r in await content.get_resources():
         if not r.chat_id:
             continue
         try:

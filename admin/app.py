@@ -154,7 +154,7 @@ async def _notify_granted(tg_id: int, sub) -> None:
             thanks = await content.get_text("thanks_text")
             details = await _sub_text(sub)
             await bot.send_message(tg_id, f"{thanks}\n\n{details}",
-                                   reply_markup=kb.subscription_kb(sub, links))
+                                   reply_markup=await kb.subscription_kb(sub, links))
         finally:
             await bot.session.close()
     except Exception:  # noqa: BLE001
@@ -389,6 +389,23 @@ async def tariffs_delete(request: Request, code: str = Form(...)):
         return r
     await content.delete_tariff(code)
     return _rr("/tariffs")
+
+
+# ------------------------- ресурсы (канал/чат) -------------------------
+
+@router.get("/resources", response_class=HTMLResponse)
+async def resources_page(request: Request):
+    if (r := _guard(request)):
+        return r
+    return _page(request, "resources.html", {"resources": await content.get_resource_config()})
+
+
+@router.post("/resources/{key}/save")
+async def resources_save(request: Request, key: str, url: str = Form(""), chat_id: str = Form("")):
+    if (r := _guard(request)):
+        return r
+    await content.set_resource(key, url, chat_id)
+    return _rr("/resources")
 
 
 # ------------------------- пользователи -------------------------

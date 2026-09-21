@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title">Ресурсы (канал и чат)</h1>
+<p class="page-sub">Ссылки на закрытый канал и чат, куда бот пускает по подписке. Изменения применяются
+сразу — перезапуск не нужен. Подробная инструкция ниже. 👇</p>
+
+<div class="reslist">
+  {% for res in resources %}
+  <div class="panel rescard">
+    <div class="reshead">
+      <div class="restitle">{{ res.title }}</div>
+      {% if res.url or res.chat_id %}
+        <span class="badge ok"><span class="dot"></span>настроен</span>
+      {% else %}
+        <span class="badge muted">не настроен</span>
+      {% endif %}
+    </div>
+    <form method="post" action="{{ base }}/resources/{{ res.key }}/save" class="resform">
+      <div class="fld">
+        <label class="f">Ссылка-приглашение <span class="muted">(её видит пользователь в боте)</span></label>
+        <input name="url" value="{{ res.url }}" placeholder="https://t.me/+…">
+      </div>
+      <div class="fld">
+        <label class="f">Chat ID <span class="muted">(для авто-доступа; менять только при смене самого канала/чата)</span></label>
+        <input name="chat_id" value="{{ res.chat_id }}" placeholder="-100…">
+      </div>
+      <button class="btn sm" type="submit">Сохранить</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="panel guide">
+  <h2 style="margin-top:0">📘 Как это менять — подробная инструкция</h2>
+
+  <p><b>Коротко про два поля:</b></p>
+  <ul>
+    <li><b>Ссылка-приглашение</b> — это то, что пользователь видит и по чему заходит (кнопка «🔒 Приватка» / «💬 Чат»).
+      Её можно менять сколько угодно.</li>
+    <li><b>Chat ID</b> — внутренний номер канала/чата (вида <code>-100…</code>), по нему бот <b>сам впускает и удаляет</b>
+      участников. Его нужно менять <b>только если вы подключаете совсем другой канал/чат</b>. Если это тот же
+      канал/чат, а вы просто обновили ссылку-приглашение — <b>Chat ID не трогайте</b>.</li>
+  </ul>
+
+  <h3>Ситуация 1. Поменять только ссылку (тот же канал/чат) — самое частое</h3>
+  <ol>
+    <li>В Telegram откройте нужный канал/чат → <b>Управление → Пригласительные ссылки</b> → создайте новую ссылку
+      (или скопируйте существующую вида <code>https://t.me/+…</code>).</li>
+    <li>Вставьте её сюда в поле <b>«Ссылка-приглашение»</b> нужного ресурса.</li>
+    <li>Поле <b>Chat ID оставьте как есть</b>.</li>
+    <li>Нажмите <b>«Сохранить»</b>. Готово — новая ссылка сразу заработает в боте.</li>
+  </ol>
+
+  <h3>Ситуация 2. Подключить другой канал/чат</h3>
+  <p>Тут нужно и новую ссылку, и новый Chat ID, и добавить бота админом:</p>
+  <ol>
+    <li>Добавьте бота <b>@themainschool_bot</b> в новый канал/чат <b>администратором</b> с правами
+      <b>«Пригласительные ссылки»</b> и <b>«Блокировать пользователей»</b> (без этого авто-доступ не работает).</li>
+    <li>Возьмите <b>ссылку-приглашение</b> нового канала/чата (как в Ситуации 1).</li>
+    <li>Узнайте <b>Chat ID</b> нового канала/чата (см. ниже «Как узнать Chat ID»).</li>
+    <li>Впишите сюда новую <b>ссылку</b> и новый <b>Chat ID</b> → <b>«Сохранить»</b>.</li>
+  </ol>
+
+  <h3>Как узнать Chat ID</h3>
+  <p>Два простых способа (числа для канала/супергруппы начинаются с <code>-100</code>):</p>
+  <ul>
+    <li><b>Через web.telegram.org:</b> откройте канал/чат на <code>web.telegram.org</code> (версия A) — в адресной
+      строке после <code>#</code> будет число вида <code>-1001234567890</code>. Это и есть Chat ID.</li>
+    <li><b>Через бота-помощника:</b> напишите любое сообщение в канале/чате, перешлите его боту
+      <b>@getidsbot</b> — он ответит <code>Chat ID: -100…</code>.</li>
+  </ul>
+
+  <div class="warn">
+    <b>⚠️ Важно</b>
+    <ul>
+      <li>Не путайте <b>канал</b> и <b>чат</b> — у каждого свой Chat ID и своя ссылка. Заполняйте в соответствующей карточке.</li>
+      <li>Меняете сам канал/чат — обязательно сначала <b>добавьте бота админом</b> туда, иначе он не сможет впускать/удалять.</li>
+      <li>Если оставить <b>оба поля пустыми</b> — ресурс просто не показывается в боте (кнопки не будет).</li>
+      <li>«Форум» сейчас не используется — оставьте его пустым, если отдельного форума нет.</li>
+    </ul>
+  </div>
+</div>
+
+<style>
+  .reslist{display:flex;flex-direction:column;gap:12px;margin-bottom:22px}
+  .rescard{padding:16px 18px}
+  .reshead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .restitle{font-weight:700;font-size:16px}
+  .resform{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end}
+  .resform .fld .f{margin-bottom:5px;font-size:12px;color:var(--ink-2)}
+  .resform .btn{height:40px}
+  .guide{padding:20px 22px;line-height:1.55}
+  .guide h3{margin:18px 0 6px;font-size:15px}
+  .guide ul,.guide ol{margin:6px 0 6px;padding-left:20px}
+  .guide li{margin:3px 0}
+  .guide code{background:var(--surface-2);padding:1px 6px;border-radius:6px;font-size:13px}
+  .warn{margin-top:16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+  .warn ul{margin:6px 0 0}
+  @media (max-width:760px){
+    .resform{grid-template-columns:1fr}
+  }
+</style>
+{% endblock %}

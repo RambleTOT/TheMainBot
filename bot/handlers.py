@@ -145,7 +145,7 @@ async def _handle_gift_redeem(message: Message, bot: Bot, code: str) -> None:
         text = await content.get_text(
             "gift_redeem_success", title=_esc(tariff.title), date=fmt_msk(sub.expires_at)
         )
-    await message.answer(text, reply_markup=kb.subscription_kb(sub, links))
+    await message.answer(text, reply_markup=await kb.subscription_kb(sub, links))
 
 
 @router.message(Command("id"))
@@ -252,7 +252,7 @@ async def paid_test(cq: CallbackQuery, bot: Bot) -> None:
     links = await grant_access(bot, cq.from_user.id)
     thanks = await content.get_text("thanks_text")
     details = await _active_sub_text(sub)
-    await _send_post(cq.message, "thanks_text", f"{thanks}\n\n{details}", kb.subscription_kb(sub, links))
+    await _send_post(cq.message, "thanks_text", f"{thanks}\n\n{details}", await kb.subscription_kb(sub, links))
     await cq.answer("Оплата подтверждена ✅")
 
 
@@ -289,7 +289,7 @@ async def my_subscription(message: Message) -> None:
     if sub is None:
         await message.answer(await content.get_text("my_sub_none"), reply_markup=kb.my_sub_none_kb())
         return
-    await message.answer(await _active_sub_text(sub), reply_markup=kb.subscription_kb(sub))
+    await message.answer(await _active_sub_text(sub), reply_markup=await kb.subscription_kb(sub))
 
 
 # ------------------------- Остановка автопродления -------------------------
@@ -317,7 +317,7 @@ async def ar_start(cq: CallbackQuery) -> None:
         await cq.message.answer(await content.get_text("start_ar_done"))
         sub = await get_active_subscription(cq.from_user.id)
         if sub:
-            await cq.message.answer(await _active_sub_text(sub), reply_markup=kb.subscription_kb(sub))
+            await cq.message.answer(await _active_sub_text(sub), reply_markup=await kb.subscription_kb(sub))
     else:
         await cq.message.answer(await content.get_text("my_sub_none"), reply_markup=kb.my_sub_none_kb())
     await cq.answer()
@@ -327,7 +327,7 @@ async def ar_start(cq: CallbackQuery) -> None:
 async def ar_back(cq: CallbackQuery) -> None:
     sub = await get_active_subscription(cq.from_user.id)
     if sub:
-        await cq.message.answer(await _active_sub_text(sub), reply_markup=kb.subscription_kb(sub))
+        await cq.message.answer(await _active_sub_text(sub), reply_markup=await kb.subscription_kb(sub))
     await cq.answer()
 
 
@@ -365,7 +365,7 @@ async def on_join_request(update: ChatJoinRequest, bot: Bot) -> None:
     """
     uid = update.from_user.id
     # одобряем только в настроенных ресурсах (не в любом чате, где бот — админ)
-    allowed = {r.chat_id for r in get_config().resources if r.chat_id}
+    allowed = {r.chat_id for r in await content.get_resources() if r.chat_id}
     if update.chat.id not in allowed:
         await update.decline()
         log.info("Join declined (chat not in resources): user=%s chat=%s", uid, update.chat.id)

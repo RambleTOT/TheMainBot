@@ -2,8 +2,7 @@
 from aiogram.types import InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from . import texts
-from .config import get_config
+from . import content, texts
 from .content import TariffDTO
 from .services import SubInfo
 
@@ -55,12 +54,14 @@ def pay_kb(code: str, *, gift: bool = False, confirmation_url: str | None = None
     return b.as_markup()
 
 
-def subscription_kb(sub: SubInfo | None, links: dict[str, str] | None = None) -> InlineKeyboardMarkup:
-    """Кнопки под постом подписки: ресурсы + (опц.) остановка автопродления."""
-    cfg = get_config()
+async def subscription_kb(sub: SubInfo | None, links: dict[str, str] | None = None) -> InlineKeyboardMarkup:
+    """Кнопки под постом подписки: ресурсы + (опц.) остановка автопродления.
+
+    Ресурсы читаются из БД (редактируются в админке), поэтому асинхронная.
+    """
     links = links or {}
     b = InlineKeyboardBuilder()
-    for r in cfg.resources:
+    for r in await content.get_resources():
         url = links.get(r.key) or r.url
         if url:
             b.button(text=r.title, url=url)

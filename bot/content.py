@@ -4,11 +4,23 @@
 запуске и дальше редактируются из админ-панели. Бот всегда читает актуальные
 значения из БД, поэтому правки в админке применяются сразу.
 """
+import os
 from dataclasses import dataclass
 
 from sqlalchemy import select
 
+from .config import Resource
 from .database import Setting, Tariff, get_sessionmaker
+
+
+# Ресурсы (закрытые канал/чат), доступ к которым выдаёт бот. Подписи фиксированы,
+# а ссылка-приглашение и chat_id редактируются в админке (раздел «Ресурсы»).
+RESOURCE_DEFS: list[tuple[str, str]] = [
+    ("privatka", "🔒 Приватка"),
+    ("forum", "🗣 Форум"),
+    ("chat", "💬 Чат"),
+]
+RESOURCE_KEYS = {k for k, _ in RESOURCE_DEFS}
 
 
 # ------------------------- тексты по умолчанию -------------------------
@@ -296,6 +308,55 @@ async def get_all_settings() -> dict[str, str]:
     return {key: overrides.get(key, default) for key, default in DEFAULT_SETTINGS.items()}
 
 
+# ------------------------- ресурсы (канал/чат) -------------------------
+
+def _parse_chat_id(raw: str | None) -> int | None:
+    raw = (raw or "").strip()
+    return int(raw) if raw.lstrip("-").isdigit() else None
+
+
+async def _res_values() -> dict[str, str]:
+    sm = get_sessionmaker()
+    async with sm() as s:
+        res = await s.execute(select(Setting).where(Setting.key.startswith("res_")))
+        return {r.key: r.value for r in res.scalars()}
+
+
+async def get_resources() -> list[Resource]:
+    """Список НАСТРОЕННЫХ ресурсов (есть ссылка или chat_id) — для бота.
+
+    Читается из БД, поэтому правки ссылок/ID в админке применяются сразу.
+    """
+    vals = await _res_values()
+    out: list[Resource] = []
+    for key, title in RESOURCE_DEFS:
+        url = (vals.get(f"res_{key}_url") or "").strip() or None
+        chat_id = _parse_chat_id(vals.get(f"res_{key}_chat_id"))
+        if url or chat_id:
+            out.append(Resource(key, title, url, chat_id))
+    return out
+
+
+async def get_resource_config() -> list[dict]:
+    """Все ресурсы (в т.ч. пустые) для админки: [{key, title, url, chat_id}]."""
+    vals = await _res_values()
+    return [
+        {"key": key, "title": title,
+         "url": vals.get(f"res_{key}_url", ""),
+         "chat_id": vals.get(f"res_{key}_chat_id", "")}
+        for key, title in RESOURCE_DEFS
+    ]
+
+
+async def set_resource(key: str, url: str, chat_id: str) -> bool:
+    """Сохраняет ссылку и chat_id ресурса. Возвращает False для неизвестного ключа."""
+    if key not in RESOURCE_KEYS:
+        return False
+    await set_setting(f"res_{key}_url", (url or "").strip())
+    await set_setting(f"res_{key}_chat_id", (chat_id or "").strip())
+    return True
+
+
 # ------------------------- тарифы -------------------------
 
 async def get_tariffs(active_only: bool = True) -> list[TariffDTO]:
@@ -352,6 +413,13 @@ async def seed_defaults() -> None:
         for key, value in DEFAULT_SETTINGS.items():
             if key not in existing_keys:
                 s.add(Setting(key=key, value=value))
+
+        # Ресурсы: при первом запуске переносим ссылки/ID из .env, дальше — из админки.
+        for rkey in RESOURCE_KEYS:
+            for suffix, env in (("url", "URL"), ("chat_id", "CHAT_ID")):
+                skey = f"res_{rkey}_{suffix}"
+                if skey not in existing_keys:
+                    s.add(Setting(key=skey, value=os.getenv(f"RES_{rkey.upper()}_{env}") or ""))
 
         res = await s.execute(select(Tariff.code))
         existing_codes = {row[0] for row in res.all()}
