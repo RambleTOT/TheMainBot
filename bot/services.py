@@ -297,6 +297,22 @@ async def redeem_gift(code: str, redeemer_id: int) -> tuple[SubInfo, TariffDTO] 
     return sub, tariff
 
 
+async def check_renewal(invoice_id: str, amount: float) -> bool:
+    """Check-вебхук для автосписания (InvoiceId = renew-<sub_id>-<период>): подтверждаем,
+    если подписка существует, активна, автопродляемая, а сумма равна цене её тарифа."""
+    try:
+        sub_id = int(invoice_id.split("-")[1])
+    except (IndexError, ValueError):
+        return False
+    sm = get_sessionmaker()
+    async with sm() as s:
+        sub = await s.get(Subscription, sub_id)
+    if not sub or sub.status != "active" or not sub.autorenew or sub.is_forever:
+        return False
+    tariff = await content.get_tariff(sub.tariff_id)
+    return bool(tariff and abs(amount - tariff.price_rub) <= 0.01)
+
+
 async def get_card_token(tg_id: int) -> str | None:
     sm = get_sessionmaker()
     async with sm() as s:

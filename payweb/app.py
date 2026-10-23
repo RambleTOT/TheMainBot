@@ -131,15 +131,23 @@ async def cp_check(request: Request):
     fields = await _read_verified(request)
     if fields is None:
         return JSONResponse({"code": 13})
+    # Автосписание по токену (из планировщика): в Data нет тарифа — проверяем по InvoiceId.
+    # Это не новая продажа, поэтому стоп-продаж на продление не действует.
+    try:
+        amount = float(fields.get("Amount") or 0)
+    except ValueError:
+        amount = 0.0
+    invoice_id = str(fields.get("InvoiceId") or "")
+    if invoice_id.startswith("renew-"):
+        ok = await services.check_renewal(invoice_id, amount)
+        if not ok:
+            log.warning("CloudPayments check: автопродление отклонено invoice=%s amount=%s", invoice_id, amount)
+        return JSONResponse({"code": 0 if ok else 13})
     # стоп-продаж: отклоняем ДО списания (Check приходит до захвата денег)
     if not await content.sales_enabled():
         return JSONResponse({"code": 13})
     custom = _custom_data(fields)
     tariff = await content.get_tariff(str(custom.get("tariff", "")))
-    try:
-        amount = float(fields.get("Amount") or 0)
-    except ValueError:
-        amount = 0.0
     if tariff is None or abs(amount - tariff.price_rub) > 0.01:
         return JSONResponse({"code": 13})  # некорректная сумма/тариф — отклонить
     return JSONResponse({"code": 0})
@@ -151,6 +159,8 @@ async def cp_pay(request: Request):
     fields = await _read_verified(request)
     if fields is None:
         return JSONResponse({"code": 13})
+    if str(fields.get("InvoiceId") or "").startswith("renew-"):
+        return JSONResponse({"code": 0})  # автопродление фиксирует планировщик (_persist_renewal)
     custom = _custom_data(fields)
     tariff_code = str(custom.get("tariff", ""))
     is_gift = bool(custom.get("gift"))
