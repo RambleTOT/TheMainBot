@@ -583,6 +583,18 @@ async def broadcast_page(request: Request, msg: str = ""):
     })
 
 
+@router.get("/broadcast/{bid}/media")
+async def broadcast_media(request: Request, bid: int):
+    if (r := _guard(request)):
+        return r
+    sm = get_sessionmaker()
+    async with sm() as s:
+        b = await s.get(Broadcast, bid)
+    if b and b.media_path and os.path.isfile(b.media_path):
+        return FileResponse(b.media_path, headers={"Cache-Control": "no-store"})
+    return Response(status_code=404)
+
+
 @router.post("/broadcast/test")
 async def broadcast_test(request: Request, text: str = Form(""),
                          file: UploadFile | None = File(None)):

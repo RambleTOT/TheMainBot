@@ -12,9 +12,10 @@ from datetime import datetime
 
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.exceptions import (TelegramAPIError, TelegramForbiddenError,
-                                TelegramRetryAfter)
+                                TelegramNetworkError, TelegramRetryAfter)
 from aiogram.types import FSInputFile
 from sqlalchemy import select
 
@@ -26,7 +27,16 @@ log = logging.getLogger(__name__)
 CAPTION_LIMIT = 1024
 TEXT_LIMIT = 4096
 SEND_DELAY = 0.05          # ~20 сообщений/с — с запасом под лимит Telegram (30/с)
+# Канал сервера до Telegram бывает медленным (~60 КБ/с на загрузку), а стандартный таймаут
+# aiogram — 60 с: фото в 1 МБ не успевало, видео до 50 МБ не успело бы тем более.
+MEDIA_TIMEOUT = 1800
+NET_RETRIES = 2
 _tasks: set[asyncio.Task] = set()
+
+
+def _bot() -> Bot:
+    return Bot(get_config().bot_token, session=AiohttpSession(timeout=MEDIA_TIMEOUT),
+               default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
 
 def parse_ids(raw: str) -> tuple[list[int], list[str]]:
@@ -87,7 +97,7 @@ async def _send_one(bot: Bot, chat_id: int, b: Broadcast, media_ref, caption, bo
 async def send_test(b: Broadcast) -> int:
     """Тестовая отправка админам из ADMIN_IDS. Возвращает, скольким дошло."""
     cfg = get_config()
-    bot = Bot(cfg.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    bot = _bot()
     ok = 0
     try:
         caption, body = _split(b.text, bool(b.media_type))
@@ -106,7 +116,7 @@ async def send_test(b: Broadcast) -> int:
 async def _run(broadcast_id: int, ids: list[int]) -> None:
     cfg = get_config()
     sm = get_sessionmaker()
-    bot = Bot(cfg.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    bot = _bot()
     sent = blocked = failed = 0
     try:
         async with sm() as s:
@@ -114,6 +124,7 @@ async def _run(broadcast_id: int, ids: list[int]) -> None:
         caption, body = _split(b.text, bool(b.media_type))
         ref = FSInputFile(b.media_path) if b.media_type else None
         for n, uid in enumerate(ids, 1):
+            net_fails = 0
             while True:
                 try:
                     fid = await _send_one(bot, uid, b, ref, caption, body)
@@ -125,6 +136,14 @@ async def _run(broadcast_id: int, ids: list[int]) -> None:
                     continue
                 except TelegramForbiddenError:
                     blocked += 1
+                except TelegramNetworkError as e:
+                    net_fails += 1
+                    if net_fails <= NET_RETRIES:   # сеть до Telegram нестабильна — пробуем ещё
+                        log.warning("broadcast %s: user=%s: сеть (%s), повтор %d", broadcast_id, uid, e, net_fails)
+                        await asyncio.sleep(3)
+                        continue
+                    failed += 1
+                    log.warning("broadcast %s: user=%s: %s", broadcast_id, uid, e)
                 except TelegramAPIError as e:
                     failed += 1
                     log.warning("broadcast %s: user=%s: %s", broadcast_id, uid, e)

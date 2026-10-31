@@ -21,7 +21,7 @@
   <div class="field">
     <label class="f">Текст сообщения</label>
     <div class="help">Можно оформление HTML: &lt;b&gt;жирный&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;, &lt;a href="https://…"&gt;ссылка&lt;/a&gt;.
-      Символы &lt; и &amp; в обычном тексте пишите как &amp;lt; и &amp;amp;. С медиа текст до 1024 символов уходит подписью, длиннее — вторым сообщением.</div>
+      Символы &lt; и &amp; в обычном тексте пишите как &amp;lt; и &amp;amp;. Видео и большие фото уходят медленно (связь сервера с Telegram ~60 КБ/с: 1 МБ ≈ 15 с, 20 МБ ≈ 5 мин), поэтому лучше сжимать файлы. С медиа текст до 1024 символов уходит подписью, длиннее — вторым сообщением.</div>
     <textarea name="text" rows="8" maxlength="4096" placeholder="Текст рассылки…"></textarea>
   </div>
   <div class="field">
@@ -50,13 +50,13 @@
   <div class="help" style="margin-top:10px">Тест уходит админам из ADMIN_IDS — они должны хотя бы раз нажать /start у бота.</div>
 </form>
 
-<h2>История</h2>
+<h2>История <span class="muted" style="font-weight:500;font-size:13px">— нажмите на строку, чтобы посмотреть детали</span></h2>
 <div class="table-wrap">
   <table>
     <thead><tr><th>№</th><th>Когда (UTC)</th><th>Кому</th><th>Текст</th><th>Статус</th><th>Доставлено</th><th>Бот заблокирован</th><th>Ошибок</th></tr></thead>
     <tbody>
     {% for b in history %}
-      <tr>
+      <tr class="hrow" tabindex="0" data-id="{{ b.id }}" data-created="{{ b.created_at.strftime('%d.%m.%Y %H:%M:%S') }}" data-finished="{{ b.finished_at.strftime('%d.%m.%Y %H:%M:%S') if b.finished_at else '' }}" data-audience="{{ {'all':'Всем пользователям бота','active':'Только с действующей подпиской','inactive':'Только без подписки','list':'Выбранным пользователям'}[b.audience] }}" data-list="{{ b.audience_list }}" data-text="{{ b.text }}" data-media="{{ b.media_type or '' }}" data-status="{{ b.status }}" data-total="{{ b.total }}" data-sent="{{ b.sent }}" data-blocked="{{ b.blocked }}" data-failed="{{ b.failed }}">
         <td class="num">{{ b.id }}</td>
         <td class="num">{{ b.created_at.strftime('%d.%m %H:%M') }}</td>
         <td>{{ {'all':'всем','active':'с подпиской','inactive':'без подписки','list':'выбранным'}[b.audience] }}</td>
@@ -74,12 +74,62 @@
   {% if not history %}<div style="padding:30px;text-align:center" class="muted">Рассылок ещё не было.</div>{% endif %}
 </div>
 
+<dialog id="dlg">
+  <div class="dhead"><b id="d-title"></b><button class="btn ghost sm" type="button" id="d-close">Закрыть</button></div>
+  <dl>
+    <dt>Статус</dt><dd id="d-status"></dd>
+    <dt>Отправлена</dt><dd id="d-created"></dd>
+    <dt>Завершена</dt><dd id="d-finished"></dd>
+    <dt>Кому</dt><dd id="d-aud"></dd>
+    <dt>Итог</dt><dd id="d-stats"></dd>
+  </dl>
+  <div class="dsec">Текст</div>
+  <pre id="d-text"></pre>
+  <div id="d-media"></div>
+</dialog>
+
 <style>
+  .hrow{cursor:pointer}
+  dialog{border:1px solid var(--line-2);border-radius:var(--r);padding:22px;width:min(560px,92vw);box-shadow:var(--shadow);color:var(--ink);background:var(--surface)}
+  dialog::backdrop{background:rgba(11,11,12,.45)}
+  .dhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;font-size:17px}
+  dl{display:grid;grid-template-columns:110px 1fr;gap:6px 12px;margin:0 0 14px;font-size:14px}
+  dt{color:var(--ink-3)} dd{margin:0;word-break:break-word}
+  .dsec{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin-bottom:6px}
+  pre{white-space:pre-wrap;word-break:break-word;font:inherit;background:var(--surface-2);border-radius:var(--r-xs);padding:12px;margin:0;max-height:240px;overflow:auto}
+  #d-media img,#d-media video{max-width:100%;max-height:260px;border-radius:var(--r-xs);margin-top:12px;display:block}
+
   .note{padding:12px 16px;border-radius:var(--r-sm);margin-bottom:18px;font-weight:600;font-size:14px}
   .note.ok{background:var(--ok-bg);color:var(--ok)} .note.danger{background:var(--danger-bg);color:var(--danger)}
 </style>
 <script>
   const aud = document.getElementById('aud'), lb = document.getElementById('listbox');
+  const dlg = document.getElementById('dlg'), $ = id => document.getElementById(id);
+  const ST = {running:'идёт…', done:'завершена', interrupted:'прервана (перезапуск или сбой)'};
+  function openRow(tr) {
+    const d = tr.dataset;
+    $('d-title').textContent = 'Рассылка №' + d.id;
+    $('d-status').textContent = ST[d.status] || d.status;
+    $('d-created').textContent = d.created + ' (UTC)';
+    $('d-finished').textContent = d.finished ? d.finished + ' (UTC)' : '—';
+    $('d-aud').textContent = d.audience + (d.list ? ': ' + d.list : '');
+    $('d-stats').textContent = 'доставлено ' + d.sent + ' из ' + d.total + ', бот заблокирован: ' + d.blocked + ', ошибок: ' + d.failed;
+    $('d-text').textContent = d.text || '(без текста)';
+    const m = $('d-media'); m.innerHTML = '';
+    if (d.media) {
+      const el = document.createElement(d.media === 'photo' ? 'img' : 'video');
+      el.src = '{{ base }}/broadcast/' + d.id + '/media';
+      if (d.media === 'video') el.controls = true;
+      m.appendChild(el);
+    }
+    dlg.showModal();
+  }
+  document.querySelectorAll('.hrow').forEach(tr => {
+    tr.addEventListener('click', () => openRow(tr));
+    tr.addEventListener('keydown', e => { if (e.key === 'Enter') openRow(tr); });
+  });
+  $('d-close').addEventListener('click', () => dlg.close());
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
   aud.addEventListener('change', () => lb.style.display = aud.value === 'list' ? '' : 'none');
   {% if running %}setTimeout(() => location.href = "{{ base }}/broadcast", 5000);{% endif %}
 </script>
