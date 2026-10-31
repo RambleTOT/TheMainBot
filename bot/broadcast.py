@@ -7,6 +7,7 @@
 import asyncio
 import logging
 import os
+import re
 import secrets
 from datetime import datetime
 
@@ -85,10 +86,15 @@ async def _send_one(bot: Bot, chat_id: int, b: Broadcast, media_ref, caption, bo
     """Шлёт одному. Возвращает file_id загруженного медиа (чтобы не заливать файл заново)."""
     file_id = None
     if b.media_type:
-        method = bot.send_photo if b.media_type == "photo" else bot.send_video
-        kw = {"photo" if b.media_type == "photo" else "video": media_ref}
-        m = await method(chat_id, caption=caption, **kw)
-        file_id = (m.photo[-1].file_id if b.media_type == "photo" else m.video.file_id)
+        if b.media_type == "photo":
+            m = await bot.send_photo(chat_id, media_ref, caption=caption)
+            file_id = m.photo[-1].file_id
+        elif b.media_type == "video":
+            m = await bot.send_video(chat_id, media_ref, caption=caption)
+            file_id = m.video.file_id
+        else:
+            m = await bot.send_document(chat_id, media_ref, caption=caption)
+            file_id = m.document.file_id
     if body:
         await bot.send_message(chat_id, body)
     return file_id
@@ -101,7 +107,7 @@ async def send_test(b: Broadcast) -> int:
     ok = 0
     try:
         caption, body = _split(b.text, bool(b.media_type))
-        ref = FSInputFile(b.media_path) if b.media_type else None
+        ref = FSInputFile(b.media_path, filename=original_name(b.media_path)) if b.media_type else None
         for uid in cfg.admin_ids:
             try:
                 await _send_one(bot, uid, b, ref, caption, body)
@@ -122,7 +128,7 @@ async def _run(broadcast_id: int, ids: list[int]) -> None:
         async with sm() as s:
             b = await s.get(Broadcast, broadcast_id)
         caption, body = _split(b.text, bool(b.media_type))
-        ref = FSInputFile(b.media_path) if b.media_type else None
+        ref = FSInputFile(b.media_path, filename=original_name(b.media_path)) if b.media_type else None
         for n, uid in enumerate(ids, 1):
             net_fails = 0
             while True:
@@ -211,7 +217,14 @@ async def mark_interrupted() -> None:
         await s.commit()
 
 
-def new_media_path(ext: str) -> str:
+def original_name(path: str) -> str:
+    """Имя файла, каким его увидит получатель (хранится как <hex16>_<имя>)."""
+    base = os.path.basename(path)
+    return base[17:] if len(base) > 17 and base[16] == "_" else base
+
+
+def new_media_path(filename: str) -> str:
     d = os.path.join(os.path.realpath(os.getenv("WELCOME_MEDIA_DIR") or "web/media"), "broadcasts")
     os.makedirs(d, exist_ok=True)
-    return os.path.join(d, f"{secrets.token_hex(8)}{ext}")
+    name = re.sub(r"[^\w.\- ()]", "_", os.path.basename(filename), flags=re.UNICODE)[:100] or "file"
+    return os.path.join(d, f"{secrets.token_hex(8)}_{name}")

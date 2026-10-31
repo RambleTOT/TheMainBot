@@ -537,6 +537,8 @@ async def user_unblock(request: Request, tg_id: int):
 MAX_PHOTO = 10 * 1024 * 1024    # лимит Telegram для фото
 MAX_VIDEO = 50 * 1024 * 1024    # лимит Bot API на загрузку
 VIDEO_EXT = {".mp4", ".mov"}
+DOC_EXT = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".rtf", ".csv",
+           ".odt", ".ods", ".zip", ".rar", ".7z"}
 
 
 async def _read_media(file: UploadFile | None) -> tuple[str | None, str | None, bool]:
@@ -551,9 +553,11 @@ async def _read_media(file: UploadFile | None) -> tuple[str | None, str | None, 
         mtype = "photo"
     elif ext in VIDEO_EXT and data[4:8] == b"ftyp" and len(data) <= MAX_VIDEO:
         mtype = "video"
+    elif ext in DOC_EXT and len(data) <= MAX_VIDEO:
+        mtype = "document"
     else:
         return None, None, True
-    path = broadcast.new_media_path(ext)
+    path = broadcast.new_media_path(file.filename)
     with open(path, "wb") as f:
         f.write(data)
     return path, mtype, False
@@ -591,7 +595,8 @@ async def broadcast_media(request: Request, bid: int):
     async with sm() as s:
         b = await s.get(Broadcast, bid)
     if b and b.media_path and os.path.isfile(b.media_path):
-        return FileResponse(b.media_path, headers={"Cache-Control": "no-store"})
+        name = broadcast.original_name(b.media_path) if b.media_type == "document" else None
+        return FileResponse(b.media_path, filename=name, headers={"Cache-Control": "no-store"})
     return Response(status_code=404)
 
 

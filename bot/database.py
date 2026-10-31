@@ -100,7 +100,7 @@ class Broadcast(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     text: Mapped[str] = mapped_column(Text, default="")
     media_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    media_type: Mapped[str | None] = mapped_column(String(16), nullable=True)  # photo | video
+    media_type: Mapped[str | None] = mapped_column(String(16), nullable=True)  # photo | video | document
     audience: Mapped[str] = mapped_column(String(16), default="all")  # all | active | inactive | list
     audience_list: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(16), default="running")  # running | done | interrupted

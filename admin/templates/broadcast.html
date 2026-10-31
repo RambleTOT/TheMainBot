@@ -6,7 +6,7 @@
 
 {% set notes = {
   'started': ('ok', 'Рассылка запущена. Прогресс — в истории ниже (страница обновляется сама).'),
-  'badfile': ('danger', 'Файл не подошёл: фото JPG/PNG/WebP до 10 МБ или видео MP4/MOV до 50 МБ.'),
+  'badfile': ('danger', 'Файл не подошёл: фото JPG/PNG/WebP до 10 МБ; видео MP4/MOV или документ (PDF, DOC/DOCX, XLS/XLSX, PPT/PPTX, TXT, RTF, CSV, ZIP, RAR, 7Z) до 50 МБ.'),
   'empty': ('danger', 'Нужен текст или файл.'),
   'toolong': ('danger', 'Текст длиннее 4096 символов.'),
   'busy': ('danger', 'Не отправлено: другая рассылка ещё идёт, либо подходящих получателей нет.'),
@@ -25,8 +25,8 @@
     <textarea name="text" rows="8" maxlength="4096" placeholder="Текст рассылки…"></textarea>
   </div>
   <div class="field">
-    <label class="f">Фото или видео <span class="muted">(необязательно)</span></label>
-    <input type="file" name="file" accept=".jpg,.jpeg,.png,.webp,.mp4,.mov">
+    <label class="f">Фото, видео или файл <span class="muted">(необязательно)</span></label>
+    <input type="file" name="file" accept=".jpg,.jpeg,.png,.webp,.mp4,.mov,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.csv,.odt,.ods,.zip,.rar,.7z">
   </div>
   <div class="field">
     <label class="f">Кому</label>
@@ -60,7 +60,7 @@
         <td class="num">{{ b.id }}</td>
         <td class="num">{{ b.created_at.strftime('%d.%m %H:%M') }}</td>
         <td>{{ {'all':'всем','active':'с подпиской','inactive':'без подписки','list':'выбранным'}[b.audience] }}</td>
-        <td>{% if b.media_type %}{{ '🖼' if b.media_type == 'photo' else '🎬' }} {% endif %}{{ (b.text or '')[:60] }}{% if b.text|length > 60 %}…{% endif %}</td>
+        <td>{% if b.media_type %}{{ {'photo':'🖼','video':'🎬','document':'📎'}[b.media_type] }} {% endif %}{{ (b.text or '')[:60] }}{% if b.text|length > 60 %}…{% endif %}</td>
         <td>{% if b.status == 'running' %}<span class="badge muted">идёт…</span>
             {% elif b.status == 'done' %}<span class="badge ok"><span class="dot"></span>готово</span>
             {% else %}<span class="badge danger">прервана</span>{% endif %}</td>
@@ -89,7 +89,7 @@
 </dialog>
 
 <style>
-  .hrow{cursor:pointer}
+  .hrow{cursor:pointer} a.btn{text-decoration:none}
   dialog{border:1px solid var(--line-2);border-radius:var(--r);padding:22px;width:min(560px,92vw);box-shadow:var(--shadow);color:var(--ink);background:var(--surface)}
   dialog::backdrop{background:rgba(11,11,12,.45)}
   .dhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;font-size:17px}
@@ -117,10 +117,17 @@
     $('d-text').textContent = d.text || '(без текста)';
     const m = $('d-media'); m.innerHTML = '';
     if (d.media) {
-      const el = document.createElement(d.media === 'photo' ? 'img' : 'video');
-      el.src = '{{ base }}/broadcast/' + d.id + '/media';
-      if (d.media === 'video') el.controls = true;
-      m.appendChild(el);
+      const url = '{{ base }}/broadcast/' + d.id + '/media';
+      if (d.media === 'document') {
+        const a = document.createElement('a');
+        a.href = url; a.textContent = '📎 Скачать прикреплённый файл'; a.className = 'btn ghost sm';
+        a.style.marginTop = '12px'; m.appendChild(a);
+      } else {
+        const el = document.createElement(d.media === 'photo' ? 'img' : 'video');
+        el.src = url;
+        if (d.media === 'video') el.controls = true;
+        m.appendChild(el);
+      }
     }
     dlg.showModal();
   }
