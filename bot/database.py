@@ -93,6 +93,25 @@ class Tariff(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class Broadcast(Base):
+    """Рассылка из админки: текст (+медиа) всем или выбранным пользователям."""
+    __tablename__ = "broadcasts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    text: Mapped[str] = mapped_column(Text, default="")
+    media_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    media_type: Mapped[str | None] = mapped_column(String(16), nullable=True)  # photo | video
+    audience: Mapped[str] = mapped_column(String(16), default="all")  # all | active | inactive | list
+    audience_list: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(16), default="running")  # running | done | interrupted
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    sent: Mapped[int] = mapped_column(Integer, default=0)
+    blocked: Mapped[int] = mapped_column(Integer, default=0)  # заблокировали бота / удалили чат
+    failed: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class Setting(Base):
     """Тексты и настройки бота (редактируются из админки), ключ-значение."""
     __tablename__ = "settings"

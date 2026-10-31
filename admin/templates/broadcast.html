@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title">Рассылки</h1>
+<p class="page-sub">Сообщение от имени бота: текст, при желании фото или видео. Рассылка идёт в фоне,
+прогресс виден в истории ниже. Забаненные пользователи не получают рассылки.</p>
+
+{% set notes = {
+  'started': ('ok', 'Рассылка запущена. Прогресс — в истории ниже (страница обновляется сама).'),
+  'badfile': ('danger', 'Файл не подошёл: фото JPG/PNG/WebP до 10 МБ или видео MP4/MOV до 50 МБ.'),
+  'empty': ('danger', 'Нужен текст или файл.'),
+  'toolong': ('danger', 'Текст длиннее 4096 символов.'),
+  'busy': ('danger', 'Не отправлено: другая рассылка ещё идёт, либо подходящих получателей нет.'),
+} %}
+{% if msg.startswith('test') %}
+  <div class="note ok">Тест отправлен: получили {{ msg[4:] }} из {{ test_ids|length }} админов (ADMIN_IDS). Проверьте в Telegram, как выглядит сообщение.</div>
+{% elif msg in notes %}
+  <div class="note {{ notes[msg][0] }}">{{ notes[msg][1] }}</div>
+{% endif %}
+
+<form class="panel" method="post" enctype="multipart/form-data" id="bf">
+  <div class="field">
+    <label class="f">Текст сообщения</label>
+    <div class="help">Можно оформление HTML: &lt;b&gt;жирный&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;, &lt;a href="https://…"&gt;ссылка&lt;/a&gt;.
+      Символы &lt; и &amp; в обычном тексте пишите как &amp;lt; и &amp;amp;. С медиа текст до 1024 символов уходит подписью, длиннее — вторым сообщением.</div>
+    <textarea name="text" rows="8" maxlength="4096" placeholder="Текст рассылки…"></textarea>
+  </div>
+  <div class="field">
+    <label class="f">Фото или видео <span class="muted">(необязательно)</span></label>
+    <input type="file" name="file" accept=".jpg,.jpeg,.png,.webp,.mp4,.mov">
+  </div>
+  <div class="field">
+    <label class="f">Кому</label>
+    <select name="audience" id="aud">
+      <option value="all">Всем пользователям бота ({{ counts.all }})</option>
+      <option value="active">Только с действующей подпиской ({{ counts.active }})</option>
+      <option value="inactive">Только без подписки ({{ counts.inactive }})</option>
+      <option value="list">Выбранным (список ниже)</option>
+    </select>
+  </div>
+  <div class="field" id="listbox" style="display:none">
+    <label class="f">Список получателей</label>
+    <div class="help">Telegram ID или @username — через запятую, пробел или с новой строки.</div>
+    <textarea name="audience_list" rows="3" placeholder="123456789, @username"></textarea>
+  </div>
+  <div class="row">
+    <button class="btn ghost" type="submit" formaction="{{ base }}/broadcast/test">Отправить тест себе</button>
+    <button class="btn" type="submit" formaction="{{ base }}/broadcast/send" {% if running %}disabled title="Дождитесь окончания текущей рассылки"{% endif %}
+      onclick="return confirm('Отправить рассылку? Остановить её после запуска нельзя.')">Разослать</button>
+  </div>
+  <div class="help" style="margin-top:10px">Тест уходит админам из ADMIN_IDS — они должны хотя бы раз нажать /start у бота.</div>
+</form>
+
+<h2>История</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>№</th><th>Когда (UTC)</th><th>Кому</th><th>Текст</th><th>Статус</th><th>Доставлено</th><th>Бот заблокирован</th><th>Ошибок</th></tr></thead>
+    <tbody>
+    {% for b in history %}
+      <tr>
+        <td class="num">{{ b.id }}</td>
+        <td class="num">{{ b.created_at.strftime('%d.%m %H:%M') }}</td>
+        <td>{{ {'all':'всем','active':'с подпиской','inactive':'без подписки','list':'выбранным'}[b.audience] }}</td>
+        <td>{% if b.media_type %}{{ '🖼' if b.media_type == 'photo' else '🎬' }} {% endif %}{{ (b.text or '')[:60] }}{% if b.text|length > 60 %}…{% endif %}</td>
+        <td>{% if b.status == 'running' %}<span class="badge muted">идёт…</span>
+            {% elif b.status == 'done' %}<span class="badge ok"><span class="dot"></span>готово</span>
+            {% else %}<span class="badge danger">прервана</span>{% endif %}</td>
+        <td class="num">{{ b.sent }} / {{ b.total }}</td>
+        <td class="num">{{ b.blocked }}</td>
+        <td class="num">{{ b.failed }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if not history %}<div style="padding:30px;text-align:center" class="muted">Рассылок ещё не было.</div>{% endif %}
+</div>
+
+<style>
+  .note{padding:12px 16px;border-radius:var(--r-sm);margin-bottom:18px;font-weight:600;font-size:14px}
+  .note.ok{background:var(--ok-bg);color:var(--ok)} .note.danger{background:var(--danger-bg);color:var(--danger)}
+</style>
+<script>
+  const aud = document.getElementById('aud'), lb = document.getElementById('listbox');
+  aud.addEventListener('change', () => lb.style.display = aud.value === 'list' ? '' : 'none');
+  {% if running %}setTimeout(() => location.href = "{{ base }}/broadcast", 5000);{% endif %}
+</script>
+{% endblock %}

@@ -26,10 +26,10 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from starlette.middleware.sessions import SessionMiddleware
 
-from bot import content, keyboards as kb, services
+from bot import broadcast, content, keyboards as kb, services
 from bot.access import allow_rejoin, grant_access, revoke_access
 from bot.config import get_config
-from bot.database import Subscription, User, get_sessionmaker, init_db
+from bot.database import Broadcast, Subscription, User, get_sessionmaker, init_db
 
 log = logging.getLogger(__name__)
 cfg = get_config()
@@ -69,6 +69,7 @@ router = APIRouter()
 async def _startup() -> None:
     await init_db()
     await content.seed_defaults()
+    await broadcast.mark_interrupted()  # рассылка, прерванная перезапуском, не возобновляется
 
 
 # ------------------------- утилиты -------------------------
@@ -529,6 +530,96 @@ async def user_unblock(request: Request, tg_id: int):
     except Exception:  # noqa: BLE001
         log.exception("admin unblock allow_rejoin failed for %s", tg_id)
     return _rr("/users")
+
+
+# ------------------------- рассылки -------------------------
+
+MAX_PHOTO = 10 * 1024 * 1024    # лимит Telegram для фото
+MAX_VIDEO = 50 * 1024 * 1024    # лимит Bot API на загрузку
+VIDEO_EXT = {".mp4", ".mov"}
+
+
+async def _read_media(file: UploadFile | None) -> tuple[str | None, str | None, bool]:
+    """(путь, тип, ошибка). Пустое поле файла — не ошибка."""
+    if file is None or not file.filename:
+        return None, None, False
+    ext = os.path.splitext(file.filename)[1].lower()
+    data = await file.read(MAX_VIDEO + 1)
+    if not data:
+        return None, None, True
+    if ext in IMG_EXT and _is_image_bytes(data) and len(data) <= MAX_PHOTO:
+        mtype = "photo"
+    elif ext in VIDEO_EXT and data[4:8] == b"ftyp" and len(data) <= MAX_VIDEO:
+        mtype = "video"
+    else:
+        return None, None, True
+    path = broadcast.new_media_path(ext)
+    with open(path, "wb") as f:
+        f.write(data)
+    return path, mtype, False
+
+
+def _rm(path: str | None) -> None:
+    if path:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+@router.get("/broadcast", response_class=HTMLResponse)
+async def broadcast_page(request: Request, msg: str = ""):
+    if (r := _guard(request)):
+        return r
+    sm = get_sessionmaker()
+    async with sm() as s:
+        history = list((await s.execute(
+            select(Broadcast).order_by(Broadcast.id.desc()).limit(15))).scalars())
+    counts = {a: len(await broadcast.recipients(a)) for a in ("all", "active", "inactive")}
+    running = any(b.status == "running" for b in history)
+    return _page(request, "broadcast.html", {
+        "history": history, "counts": counts, "running": running, "msg": msg,
+        "test_ids": cfg.admin_ids,
+    })
+
+
+@router.post("/broadcast/test")
+async def broadcast_test(request: Request, text: str = Form(""),
+                         file: UploadFile | None = File(None)):
+    if (r := _guard(request)):
+        return r
+    path, mtype, bad = await _read_media(file)
+    if bad:
+        return _rr("/broadcast?msg=badfile")
+    if not text.strip() and not path:
+        return _rr("/broadcast?msg=empty")
+    try:
+        ok = await broadcast.send_test(Broadcast(text=text, media_path=path, media_type=mtype))
+    finally:
+        _rm(path)
+    return _rr(f"/broadcast?msg=test{ok}")
+
+
+@router.post("/broadcast/send")
+async def broadcast_send(request: Request, text: str = Form(""), audience: str = Form("all"),
+                         audience_list: str = Form(""), file: UploadFile | None = File(None)):
+    if (r := _guard(request)):
+        return r
+    if audience not in ("all", "active", "inactive", "list"):
+        audience = "all"
+    path, mtype, bad = await _read_media(file)
+    if bad:
+        return _rr("/broadcast?msg=badfile")
+    if not text.strip() and not path:
+        return _rr("/broadcast?msg=empty")
+    if len(text) > broadcast.TEXT_LIMIT:
+        _rm(path)
+        return _rr("/broadcast?msg=toolong")
+    bid = await broadcast.start(text, path, mtype, audience, audience_list)
+    if bid is None:
+        _rm(path)
+        return _rr("/broadcast?msg=busy")
+    return _rr("/broadcast?msg=started")
 
 
 app.include_router(router, prefix=BASE)
